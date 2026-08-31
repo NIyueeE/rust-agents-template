@@ -10,7 +10,7 @@ jobs:
     name: full check chain
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # rust-toolchain.toml (channel = stable + clippy/rustfmt) resolves automatically
       - uses: dtolnay/rust-toolchain@stable

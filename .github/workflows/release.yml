@@ -12,7 +12,7 @@ jobs:
     name: create release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # Release notes are extracted from CHANGELOG.md (Keep a Changelog format).
       # The section for the pushed tag is mandatory; a missing or empty section
@@ -53,7 +53,7 @@ jobs:
             target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # rust-toolchain.toml resolves the stable toolchain; the job adds the matrix target
       - uses: dtolnay/rust-toolchain@stable
