@@ -23,7 +23,7 @@ jobs:
           tool: cargo-machete,cargo-audit,cargo-outdated,cargo-deny
 
       - name: Install just
-        uses: extractions/setup-just@v3
+        uses: extractions/setup-just@v4
 
       - name: Full check chain (fmt/machete/docs/clippy + audit/outdated/test)
         run: just check
