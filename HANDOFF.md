@@ -112,10 +112,9 @@ something the next session needs to know.
   grows past ~10 tests.
 - Consider tag-protection rulesets (restrict `v*` creation) if the repo gains
   collaborators.
-- Only the linux leg of `test-build.yml` has been exercised (see current
-  state); the workflow itself was not re-dispatched after the pinned-runner
-  change. The macOS/Windows CI legs passed on `main`; the GHCR image job still
-  requires a release tag.
+- `test-build.yml` was re-dispatched after the pinned-runner change: linux,
+  macOS and Windows all built successfully. The macOS/Windows CI legs passed
+  on `main`; the GHCR image job still requires a release tag.
 - Branch protection on `main` must keep requiring the `full check chain`
   context; that name is now produced by the always-running `gate` job.
 - v0.2.0 is prepared, not tagged. Creating the tag is a deliberate human act
