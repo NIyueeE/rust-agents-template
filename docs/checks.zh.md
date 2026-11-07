@@ -9,7 +9,7 @@
 | 每次提交 | `githooks/pre-commit` | 快 | 代码质量:fmt、secrets、machete、docs 同步、clippy |
 | 每次分支推送 | `githooks/pre-push` | 重 | 安全、依赖策略、测试 |
 | 每个发布标签 | `githooks/pre-tag` | 轻 | 发布状态:标签↔版本、changelog 形态、干净树、人工清单 |
-| 每次 PR / main 推送 | `ci.yml` | 全 | 确定性门、release 构建、三平台测试、workflow/hook lint |
+| 每次 PR / main 推送 | `ci.yml` | 全 | 确定性门、release 构建、三平台测试、镜像 smoke test、workflow/hook lint |
 | 每周 / 手动 | `security.yml` | 审计 | 代码未变时的安全通告与依赖策略 |
 
 本地分层是刻意的:pre-commit 是每次提交的快循环,pre-push 是每次分支推送都要
@@ -32,6 +32,10 @@ cargo install cargo-machete cargo-audit cargo-outdated cargo-deny --locked
 `cargo fmt` 和 `cargo clippy` 由 `rust-toolchain.toml` 声明的工具链自带。CI
 安装 `cargo-machete`、`cargo-audit` 和 `cargo-deny`;定时安全流程还会安装
 `cargo-outdated`,用于提示依赖新鲜度。
+
+镜像 recipe(`just image`)额外需要 `musl-gcc`(Debian/Ubuntu 上的
+`musl-tools` 包)、`rustup`,以及 `docker` 或 `podman`;它只能在 Linux 上运行。
+CI 与 release 的镜像 job 会安装 `musl-tools`。
 
 ## 仅文档改动的快车道(`pre-commit` / `pre-push`)
 
@@ -107,7 +111,8 @@ commit,所以重推旧标签审查的是那个标签的状态,不是工作树)�
 `githooks/docs-only` 分类 diff 并发布 commit range。代码改动时:
 
 - `rust gates` 扫描 range 里的密钥,运行 `just verify`,用
-  `just build-release` 构建 release profile,并运行 `just deps`;
+  `just build-release` 构建 release profile,运行 `just deps`,并用
+  `just image` 构建、smoke test 静态 musl GHCR 镜像;
 - `platform tests` 在 `macos-26` 和 `windows-2022` 上运行
   `cargo test --locked`;
 - `lint` 运行 `actionlint`、`shellcheck -x githooks/* tests/check-docs.sh` 和
@@ -136,6 +141,7 @@ release preflight 使用的、无 Git 上下文的子集:fmt、docs、clippy、�
 just check              # 本地 hook:pre-commit + pre-push
 just verify             # CI/release 确定性门(不含网络审计)
 just build-release      # release profile(LTO/panic=abort/strip)
+just image              # 静态 musl 二进制 + scratch GHCR 镜像(smoke test)
 just deps               # machete + audit + deny
 just freshness          # 建议:直接依赖是否过期
 just docs-gate-selfcheck # 坏掉的文档镜像必须失败

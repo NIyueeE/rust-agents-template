@@ -63,6 +63,46 @@ verify:
 build-release:
     cargo build --release --locked
 
+# Build the static musl binary and the scratch GHCR image, then smoke-test it.
+# Linux only: requires musl-gcc (musl-tools) and docker or podman.
+# IMAGE overrides the image tag (default: <package>:dev); CONTAINER_ENGINE picks
+# docker/podman; SOURCE_URL sets the OCI source label.
+image:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "$(git rev-parse --show-toplevel)"
+
+    if ! command -v musl-gcc >/dev/null 2>&1; then
+        echo "image: musl-gcc not found; install musl-tools (Linux)" >&2
+        exit 1
+    fi
+
+    engine="${CONTAINER_ENGINE:-}"
+    if [ -z "$engine" ]; then
+        if command -v docker >/dev/null 2>&1; then
+            engine=docker
+        elif command -v podman >/dev/null 2>&1; then
+            engine=podman
+        else
+            echo "image: neither docker nor podman found" >&2
+            exit 1
+        fi
+    fi
+
+    package="$(sed -n 's/^name = "\([^"]*\)"/\1/p' Cargo.toml | head -1)"
+    image="${IMAGE:-${package}:dev}"
+
+    rustup target add x86_64-unknown-linux-musl
+    cargo build --release --locked --target x86_64-unknown-linux-musl
+    mkdir -p bin/amd64
+    cp "target/x86_64-unknown-linux-musl/release/${package}" bin/amd64/
+
+    "$engine" build --build-arg TARGETARCH=amd64 \
+        --build-arg "SOURCE_URL=${SOURCE_URL:-}" \
+        -f Containerfile -t "$image" .
+    "$engine" run --rm "$image" | grep -q 'Hello, world!'
+    echo "image ok: $image"
+
 # Dependency policy: unused dependencies + advisories/licenses. `just setup` installs the tools.
 deps:
     cargo machete

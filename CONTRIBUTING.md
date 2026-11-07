@@ -26,7 +26,7 @@ Details and the full gate tables: [docs/checks.md](docs/checks.md) (简体中文
   `Cargo.lock`, the CHANGELOG section shape, the working tree and an advisory
   checklist; run it with `just tag-check`, create a tag with `just tag`
 - **CI**: for code changes, `just verify`, `just build-release`, `just deps`,
-  the diff secret scan, macOS/Windows `cargo test --locked`, and
+  `just image`, the diff secret scan, macOS/Windows `cargo test --locked`, and
   actionlint/shellcheck/check-docs self-test; for docs-only changes, the diff
   secret scan and the docs gate. All paths report through the `full check
   chain` gate.

@@ -74,9 +74,10 @@ code-level.**
   (`githooks/pre-push`: audit / deny / test) run on push, and the **release
   review** (`githooks/pre-tag`: tag↔version, changelog shape, clean tree,
   advisory checklist) runs on a `v*` tag. CI runs the context-free gates
-  (`just verify`, `just deps`, `just build-release`) plus macOS/Windows tests
-  and workflow/hook lint; a scheduled security workflow re-checks advisories
-  on an unchanged tree. The release review is not part of `just check`.
+  (`just verify`, `just deps`, `just build-release`, `just image`) plus
+  macOS/Windows tests and workflow/hook lint; a scheduled security workflow
+  re-checks advisories on an unchanged tree. The release review is not part of
+  `just check`.
   All of them are "the checks" and bound by this discipline.
 
 ## 3. Before every commit: docs ↔ code alignment (every commit)
@@ -104,8 +105,8 @@ code-level.**
   docs/checks in both directions, lint names ↔ docs/lint-policy, edition,
   channel, just recipes cited by live pages, README docs index, mirror
   completeness and heading parity, CI/release/security/GHCR wiring,
-  CHANGELOG extraction and skeleton, test-build entry, secret-scan and
-  pre-tag wiring).
+  CHANGELOG extraction and skeleton, test-build entry, release profile,
+  image recipe, secret-scan and pre-tag wiring).
   **Semantic alignment** (outdated prose, runnable examples, consistent tone)
   cannot be mechanized — it stays with the agent or a human reviewer.
 
@@ -140,8 +141,9 @@ code-level.**
      and re-runs `just verify` and `just deps`,
   2. creates a **draft** GitHub Release from the matching `CHANGELOG.md`
      section,
-  3. builds the three target archives with SHA-256 checksums and builds/pushes
-     the `ghcr.io` image,
+  3. builds the three target archives (static Linux musl, macOS arm64,
+     Windows msvc) with SHA-256 checksums, and builds/smoke-tests/pushes the
+     `ghcr.io` image,
   4. publishes the draft only after every artifact is ready.
 - A missing, duplicated, undated or empty changelog section **fails the
   release**. Fix: add or correct the section, delete and re-push the tag.
@@ -158,6 +160,11 @@ code-level.**
   advisory checklist. `release.yml` re-enforces the version, changelog,
   ancestry, lock and gate invariants remotely; a failed platform or image
   leaves a draft, never a partial public release.
+- **Pre-releases are supported.** A SemVer tag with a prerelease suffix
+  (`vX.Y.Z-rc.N`) is marked as a GitHub prerelease, is not marked "Latest",
+  and does not move the GHCR `latest` tag; only its version tag is pushed.
+  Stable tags set both "Latest" markers. The release profile and `--locked`
+  build apply to every target.
 - **Tag-push policy: no casual release pushes.** Commits are always allowed —
   the fast gates guard them and they trigger nothing public. Pushing a `v*`
   tag is a deliberate release act; **all** of the following must hold before
@@ -192,7 +199,8 @@ code-level.**
   1. `Cargo.toml` — `name` / `repository`;
   2. `tests/cli.rs` — `env!("CARGO_BIN_EXE_rust-agents-template")`;
   3. `.github/workflows/release.yml` — `bin: rust-agents-template`;
-  4. `Containerfile` — `COPY bin/${TARGETARCH}/rust-agents-template`.
+  4. `.github/workflows/test-build.yml` — both artifact paths;
+  5. `Containerfile` — `COPY bin/${TARGETARCH}/rust-agents-template`.
 - After renaming: `just setup` → `just check` → first commit (the pre-commit
   gate runs automatically and `just check` is the safety net for anything
   missed).
@@ -204,12 +212,12 @@ code-level.**
   release review, then release (§5, deliberate)**; a docs-only commit or push
   takes the two-gate path (`githooks/docs-only`). PR or push to `main` → CI
   classifies the change set: code runs the secret scan, `just verify`,
-  `just build-release`, `just deps`, macOS/Windows tests and workflow/hook
-  lint; docs run the secret scan and the docs gate. The always-present
-  `full check chain` job is the required check, so a docs-only PR is not
-  blocked by a missing context. Branch protection on `main` requires that
-  check, forbids force-pushes, and auto-deletes merged branches. A weekly
-  security workflow re-checks advisories without a push.
+  `just build-release`, `just deps`, `just image`, macOS/Windows tests and
+  workflow/hook lint; docs run the secret scan and the docs gate.
+  The always-present `full check chain` job is the required check, so a
+  docs-only PR is not blocked by a missing context. Branch protection on
+  `main` requires that check, forbids force-pushes, and auto-deletes merged
+  branches. A weekly security workflow re-checks advisories without a push.
 - Formatting: `just fmt` auto-fixes; `just check` rehearses the local hooks
   before committing; `just verify` runs the deterministic CI/release subset.
 - Dependencies: add or remove them only through cargo — `cargo add` (add

@@ -18,11 +18,11 @@
 - **严格 lint** —— `unsafe_code = "forbid"`,clippy `all` + `pedantic` 均为
   `deny`(见 [Lint 策略](docs/lint-policy.zh.md))。
 - **分层检查门** —— 快门在每次提交前运行,重门在每次推送前运行;CI 运行确定性
-  门、release profile 构建、macOS/Windows 测试,以及 workflow/hook lint
-  (见 [检查](docs/checks.zh.md))。
+  门、release profile 构建、macOS/Windows 测试、容器镜像 smoke test,以及
+  workflow/hook lint(见 [检查](docs/checks.zh.md))。
 - **先审查、再打标签的发布** —— `just tag` 先在本地跑发布审查;推送 `v*`
-  标签后发布 draft release、三平台二进制与校验和,以及 GHCR 镜像
-  (见 [发布](docs/release.zh.md))。
+  标签后发布 draft release、三平台二进制(静态 Linux)与校验和,以及 GHCR
+  镜像(见 [发布](docs/release.zh.md))。
 - **Rust 2024 edition**。
 
 ## 快速开始
@@ -38,6 +38,10 @@ cargo run
 
 # 随时跑完整的本地检查链(pre-commit + pre-push)
 just check
+
+# 可选:本地构建并 smoke test GHCR 镜像
+# (仅 Linux;需要 musl-tools 和 docker 或 podman)
+just image
 ```
 
 ## 文档
@@ -47,7 +51,7 @@ just check
 | [docs/using-this-template.zh.md](docs/using-this-template.zh.md) | 从本模板派生新项目:改名清单 |
 | [docs/checks.zh.md](docs/checks.zh.md) | 检查门、仅文档路径、分层 hook、CI |
 | [docs/lint-policy.zh.md](docs/lint-policy.zh.md) | 每条 lint 与级别、放行规则 |
-| [docs/release.zh.md](docs/release.zh.md) | 标签审查 → 二进制 + 校验和 + GHCR 镜像 |
+| [docs/release.zh.md](docs/release.zh.md) | 标签审查 → 二进制(静态 Linux)+ 校验和 + GHCR 镜像 |
 | [docs/structure.zh.md](docs/structure.zh.md) | 仓库里每个文件的用途 |
 | [HANDOFF.md](HANDOFF.md) | 交接文档:当前工作状态、决策与开放事项 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 如何参与贡献 |

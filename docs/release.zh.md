@@ -36,15 +36,22 @@ git push origin v0.2.0   # 这才是真正的发布动作
 
 ## 容器镜像(GHCR)
 
-发布还会构建一个 `linux/amd64` 镜像,从静态 musl 二进制打包,推送到
-`ghcr.io/<owner>/<repo>`,带两个 tag:发布标签和 `latest`。镜像配方是
-[Containerfile](../Containerfile);构建上下文只包含 `bin/amd64` 下的二进制和
-这个文件。
+Linux 发布包现在从静态 musl 二进制构建,不依赖 runner 的 glibc;发布还会用
+同一个静态 musl target 构建 `linux/amd64` 镜像。`just image` 是本地、CI 和
+release 镜像 job 共用的唯一 recipe:构建 musl 二进制、构建 scratch 镜像、做
+smoke test。
+[Containerfile](../Containerfile)是镜像配方;构建上下文只包含 `bin/amd64`
+下的二进制和这个文件。CI 在每次代码改动上运行 `just image`,所以坏掉的
+Containerfile 不会等到发布才暴露。
 
-镜像在推送前会先构建并做 smoke test。GHCR 包的可见性是仓库设置:首次推送会
-创建 private 包;如果模版要公开发布,在包设置里改成 public。要加
-`linux/arm64`,把第二个 musl 二进制放进 `bin/arm64`,并用 buildx 扩展镜像
-步骤。
+镜像推送到 `ghcr.io/<owner>/<repo>`,带发布标签;只有稳定版发布才额外推
+`latest`。预发布标签(`vX.Y.Z-rc.N`)会标记为 GitHub prerelease,且不移动
+`latest`,与 release 本身一致。OCI
+`org.opencontainers.image.source` label 会把包链接到仓库。
+
+GHCR 包的可见性是仓库设置:首次推送会创建 private 包;如果模板要公开发布,
+在包设置里改成 public。要加 `linux/arm64`,把第二个 musl 二进制放进
+`bin/arm64`,并用 buildx 扩展 recipe。
 
 镜像 job 在所有发布二进制之后、draft release 发布之前运行。它失败时,GitHub
 Release 会保持 draft。
@@ -65,6 +72,11 @@ Release 会保持 draft。
   缺陷;唯一性检查就是为它存在的。
 - **标签必须与 `Cargo.toml` 一致。** `githooks/pre-tag` 在本地检查,
   `release.yml` 在标签上再检查一次;`Cargo.toml` 里的版本是唯一来源。
+- **发布包与镜像使用调优后的 release profile。** Linux 是
+  `x86_64-unknown-linux-musl`,macOS 是 `aarch64-apple-darwin`,Windows 是
+  `x86_64-pc-windows-msvc`。所有二进制都用 `--locked` 和
+  `[profile.release]` 设置(thin LTO、单 codegen unit、`panic=abort`、strip
+  symbols)构建。
 - **发布是 draft 优先的。** 打标签先创建 draft release;二进制、SHA-256
   校验和与容器镜像都挂在 draft 上,最后才由 `publish` job 公开发布。平台或
   镜像失败只会留下 draft,不会出现残缺的公开 release。
@@ -73,6 +85,8 @@ Release 会保持 draft。
   发布空说明。
 - **权限按 job 分配。** 发布 job 需要 `contents: write`;镜像 job 需要
   `packages: write`;preflight job 只读。
-- 构建失败重跑:删除并重推标签(`git push origin :v0.2.0`),或在 Actions 页面
-  直接 re-run。删除标签只允许用于修复失败的发布。
+- 构建失败重跑:在 Actions 页面直接 re-run。`create-release` 会复用已有的
+  draft,上传 action 会替换同名产物;已经公开的 release 不会被 re-run 修改。
+  如果 draft 已经不存在,再删除并重推标签(`git push origin :v0.2.0`)。
+  删除标签只允许用于修复失败的发布。
 - 要验证某个 commit 而不发布,用上面的测试构建;不要把发布标签当构建测试。

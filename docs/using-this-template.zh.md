@@ -18,12 +18,13 @@ grep -rn "rust-agents-template" . --exclude-dir={.git,target}
 | 2 | `Cargo.lock` | 无需手动改 —— `cargo build` 会自动再生(也可以先删掉) |
 | 3 | `tests/cli.rs` | `env!("CARGO_BIN_EXE_rust-agents-template")` → 新的二进制名 |
 | 4 | `.github/workflows/release.yml` | `bin: rust-agents-template` → 新的二进制名 |
-| 5 | `Containerfile` | `COPY bin/${TARGETARCH}/rust-agents-template` → 新的二进制名 |
-| 6 | `justfile` | 顶部注释(仅文案) |
-| 7 | `README.md` / `README.zh.md` | 标题、徽章 URL、克隆 URL、简介文案 |
-| 8 | `LICENSE` / `LICENSE-MIT` / `LICENSE-APACHE` | 版权持有人与年份 |
-| 9 | `SECURITY.md`、`CONTRIBUTING.md`、`AGENTS.md` | 可选:调整联系方式 / 措辞 |
-| 10 | `src/main.rs` | crate 级文档注释(missing_docs 强制) |
+| 5 | `.github/workflows/test-build.yml` | 两处 `target/.../release/rust-agents-template[.exe]` 产物路径 → 新的二进制名 |
+| 6 | `Containerfile` | `COPY bin/${TARGETARCH}/rust-agents-template` → 新的二进制名 |
+| 7 | `justfile` | 顶部注释(仅文案);`just image` 会自动读取包名 |
+| 8 | `README.md` / `README.zh.md` | 标题、徽章 URL、克隆 URL、简介文案 |
+| 9 | `LICENSE` / `LICENSE-MIT` / `LICENSE-APACHE` | 版权持有人与年份 |
+| 10 | `SECURITY.md`、`CONTRIBUTING.md`、`AGENTS.md` | 可选:调整联系方式 / 措辞 |
+| 11 | `src/main.rs` | crate 级文档注释(missing_docs 强制) |
 
 **无需改动**的文件:`rust-toolchain.toml`、`deny.toml`、`githooks/*`、
 `.editorconfig`、`docs/*`(均为相对链接)、`.github/dependabot.yml`。

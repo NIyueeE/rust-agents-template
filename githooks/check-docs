@@ -191,6 +191,8 @@ if [ -f .github/workflows/ci.yml ]; then
   expect "CI lints workflows" .github/workflows/ci.yml 'actionlint'
   expect "CI lints hooks" .github/workflows/ci.yml 'shellcheck -x githooks/* tests/check-docs.sh'
   expect "CI self-tests the docs gate" .github/workflows/ci.yml 'tests/check-docs.sh'
+  expect "CI smoke-tests the GHCR image" .github/workflows/ci.yml 'just image'
+  expect "CI installs musl tools" .github/workflows/ci.yml 'musl-tools'
 else
   echo "  FAIL  .github/workflows/ci.yml missing (README badge references it)" >&2
   errors=$((errors + 1))
@@ -211,11 +213,27 @@ if [ -f Containerfile ]; then
   expect "release creates a draft first" .github/workflows/release.yml '--draft'
   expect "release publishes after artifacts" .github/workflows/release.yml '--draft=false'
   expect "release pushes a GHCR image" .github/workflows/release.yml 'ghcr.io'
-  expect "release smoke-tests the image" .github/workflows/release.yml 'Hello, world!'
+  expect "image recipe smoke-tests the binary" justfile 'Hello, world!'
+  expect "release builds with the lockfile" .github/workflows/release.yml 'locked: true'
+  expect "release uses the shared image recipe" .github/workflows/release.yml 'just image'
+  expect "release labels the image source" .github/workflows/release.yml 'SOURCE_URL'
+  expect "release sets GH_REPO for gh" .github/workflows/release.yml 'GH_REPO'
+  expect "release handles prereleases" .github/workflows/release.yml '--prerelease'
+  expect "release marks the latest release" .github/workflows/release.yml '--latest'
+  expect "release verifies the tag" .github/workflows/release.yml '--verify-tag'
+  expect "release builds a static Linux archive" .github/workflows/release.yml 'x86_64-unknown-linux-musl'
   expect "release docs mention Containerfile" docs/release.md 'Containerfile'
   expect "release docs mention Containerfile (zh)" docs/release.zh.md 'Containerfile'
   expect "release docs mention GHCR" docs/release.md 'GHCR'
   expect "release docs mention GHCR (zh)" docs/release.zh.md 'GHCR'
+  expect "release docs mention just image" docs/release.md 'just image'
+  expect "release docs mention just image (zh)" docs/release.zh.md 'just image'
+  expect "Containerfile labels its source" Containerfile 'org.opencontainers.image.source'
+  expect "release profile uses thin LTO" Cargo.toml 'lto = "thin"'
+  expect "release profile aborts on panic" Cargo.toml 'panic = "abort"'
+  expect "release profile strips symbols" Cargo.toml 'strip = "symbols"'
+  expect "release profile documented" docs/checks.md 'LTO/panic=abort/strip'
+  expect "release profile documented (zh)" docs/checks.zh.md 'LTO/panic=abort/strip'
 else
   echo "  FAIL  Containerfile missing (release image)" >&2
   errors=$((errors + 1))
@@ -244,6 +262,7 @@ fi
 # 11) CD test builds: manual dispatch only, never a release, documented
 if [ -f .github/workflows/test-build.yml ]; then
   expect "test builds are manual (workflow_dispatch)" .github/workflows/test-build.yml 'workflow_dispatch'
+  expect "test builds use the static Linux target" .github/workflows/test-build.yml 'x86_64-unknown-linux-musl'
   expect "test builds documented" docs/release.md 'test-build.yml'
   expect "test builds documented" docs/release.zh.md 'test-build.yml'
 else
@@ -276,7 +295,9 @@ if [ -f .github/workflows/security.yml ]; then
   expect "scheduled security runs cargo audit" .github/workflows/security.yml 'cargo audit'
   expect "scheduled security runs cargo deny" .github/workflows/security.yml 'cargo deny check'
   expect "security docs mention cargo audit" docs/checks.md 'cargo audit'
-  expect "security docs mention cargo deny" docs/checks.zh.md 'cargo deny check'
+  expect "security docs mention cargo audit (zh)" docs/checks.zh.md 'cargo audit'
+  expect "security docs mention cargo deny" docs/checks.md 'cargo deny check'
+  expect "security docs mention cargo deny (zh)" docs/checks.zh.md 'cargo deny check'
 else
   echo "  FAIL  .github/workflows/security.yml missing (scheduled audit)" >&2
   errors=$((errors + 1))

@@ -8,6 +8,14 @@ repository = "https://github.com/NIyueeE/rust-agents-template"
 
 [dependencies]
 
+# Distribution binaries: thin LTO, one codegen unit, abort on panic, stripped
+# symbols. The dev profile stays fast for the inner loop.
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+
 [lints.rust]
 unsafe_code = "forbid"
 missing_docs = "warn"

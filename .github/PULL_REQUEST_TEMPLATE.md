@@ -4,8 +4,8 @@
 
 ## Checklist
 
-- [ ] `just check` passes locally (CI runs `just verify`, `just deps`, and
-      platform tests)
+- [ ] `just check` passes locally (CI runs `just verify`, `just deps`,
+      `just image`, and platform tests)
 - [ ] Docs updated in **both** languages (`*.md` + `*.zh.md`) where relevant —
       see [AGENTS.md](AGENTS.md) §3
 - [ ] `CHANGELOG.md`: user-visible change recorded in the current release

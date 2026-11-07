@@ -20,10 +20,11 @@ featuring a strict lint policy and an automated, layered check pipeline
   (see [Lint policy](docs/lint-policy.md)).
 - **Layered check gates** — fast gates before every commit, heavyweight gates
   before every push, and CI running the deterministic gates, a release-profile
-  build, macOS/Windows tests, and workflow/hook lint (see [Checks](docs/checks.md)).
+  build, macOS/Windows tests, a container-image smoke test, and workflow/hook
+  lint (see [Checks](docs/checks.md)).
 - **Reviewed, tag-driven releases** — `just tag` runs a local release review;
-  pushing a `v*` tag publishes a draft release, three-platform binaries with
-  checksums, and a GHCR image (see [Release](docs/release.md)).
+  pushing a `v*` tag publishes a draft release, three-platform binaries
+  (static Linux) with checksums, and a GHCR image (see [Release](docs/release.md)).
 - **Rust 2024 edition**.
 
 ## Quick start
@@ -39,6 +40,10 @@ cargo run
 
 # run the full local check chain (pre-commit + pre-push) any time
 just check
+
+# optional: build and smoke-test the GHCR image locally
+# (Linux; needs musl-tools and docker or podman)
+just image
 ```
 
 ## Documentation
@@ -48,7 +53,7 @@ just check
 | [docs/using-this-template.md](docs/using-this-template.md) | derive a new project: the rename checklist |
 | [docs/checks.md](docs/checks.md) | the gates, docs-only path, layered hooks, CI |
 | [docs/lint-policy.md](docs/lint-policy.md) | every lint and its level, waiver rules |
-| [docs/release.md](docs/release.md) | tag review → binaries + checksums + GHCR image |
+| [docs/release.md](docs/release.md) | tag review → binaries (static Linux) + checksums + GHCR image |
 | [docs/structure.md](docs/structure.md) | what every file in this repo is for |
 | [HANDOFF.md](HANDOFF.md) | agent handoff: current state, decisions, open threads |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | how to contribute |

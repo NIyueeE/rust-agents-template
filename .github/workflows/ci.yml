@@ -110,6 +110,14 @@ jobs:
       - name: Dependency policy (machete/audit/deny)
         run: just deps
 
+      - name: Build and smoke-test the GHCR image
+        env:
+          SOURCE_URL: https://github.com/${{ github.repository }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+          just image
+
   platform:
     name: platform tests (${{ matrix.os }})
     needs: changes

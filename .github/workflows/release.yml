@@ -124,6 +124,7 @@ jobs:
       - name: Create draft release with notes extracted from CHANGELOG.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           TAG="$GITHUB_REF_NAME"
@@ -137,10 +138,24 @@ jobs:
             echo "::error::CHANGELOG.md has no dated '## [$VERSION] - YYYY-MM-DD' section. Add it before tagging."
             exit 1
           fi
+          # A prerelease must not become GitHub's "Latest" release. The image
+          # job applies the same rule to the GHCR `latest` tag.
+          prerelease=false
+          latest=true
+          case "$TAG" in
+            *-*) prerelease=true; latest=false ;;
+          esac
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --title "$TAG" --notes-file release-notes.md
+            is_draft="$(gh release view "$TAG" --json isDraft --jq .isDraft)"
+            if [ "$is_draft" != "true" ]; then
+              echo "::error::release $TAG is already published; refusing to mutate it"
+              exit 1
+            fi
+            gh release edit "$TAG" --title "$TAG" --notes-file release-notes.md \
+              --prerelease="$prerelease" --latest="$latest" --verify-tag
           else
-            gh release create "$TAG" --title "$TAG" --notes-file release-notes.md --draft
+            gh release create "$TAG" --title "$TAG" --notes-file release-notes.md \
+              --draft --prerelease="$prerelease" --latest="$latest" --verify-tag
           fi
 
   upload:
@@ -156,12 +171,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Static musl: the archive runs on older glibc distributions too.
           - os: ubuntu-24.04
-            target: x86_64-unknown-linux-gnu
+            target: x86_64-unknown-linux-musl
+            musl: true
           - os: macos-26
             target: aarch64-apple-darwin
+            musl: false
           - os: windows-2022
             target: x86_64-pc-windows-msvc
+            musl: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -170,6 +189,10 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Install musl tools
+        if: matrix.musl
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Build and upload release binary
@@ -177,6 +200,8 @@ jobs:
         with:
           bin: rust-agents-template
           target: ${{ matrix.target }}
+          build-tool: cargo
+          locked: true
           ref: ${{ github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
           checksum: sha256
@@ -200,19 +225,17 @@ jobs:
       - name: Install musl tools
         run: sudo apt-get update && sudo apt-get install -y musl-tools
 
-      - name: Build the static musl binary
-        run: |
-          cargo build --release --locked --target x86_64-unknown-linux-musl
-          mkdir -p bin/amd64
-          cp target/x86_64-unknown-linux-musl/release/rust-agents-template bin/amd64/
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
 
       - name: Build and smoke-test the image
+        env:
+          SOURCE_URL: https://github.com/${{ github.repository }}
         run: |
           set -euo pipefail
-          IMAGE="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
-          docker build --build-arg TARGETARCH=amd64 -f Containerfile \
-            -t "$IMAGE:$GITHUB_REF_NAME" -t "$IMAGE:latest" .
-          docker run --rm "$IMAGE:$GITHUB_REF_NAME" | grep -q 'Hello, world!'
+          IMAGE="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]'):$GITHUB_REF_NAME"
+          export IMAGE
+          just image
 
       - name: Push the image
         env:
@@ -222,7 +245,12 @@ jobs:
           IMAGE="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
           echo "$GH_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
           docker push "$IMAGE:$GITHUB_REF_NAME"
-          docker push "$IMAGE:latest"
+          if [[ "$GITHUB_REF_NAME" != *-* ]]; then
+            docker tag "$IMAGE:$GITHUB_REF_NAME" "$IMAGE:latest"
+            docker push "$IMAGE:latest"
+          else
+            echo "prerelease: GHCR latest tag left unchanged"
+          fi
 
   publish:
     name: publish release
@@ -235,7 +263,19 @@ jobs:
       - name: Publish the draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          gh release edit "$GITHUB_REF_NAME" --draft=false
-          echo "published $GITHUB_REF_NAME"
+          TAG="$GITHUB_REF_NAME"
+          is_draft="$(gh release view "$TAG" --json isDraft --jq .isDraft)"
+          if [ "$is_draft" != "true" ]; then
+            echo "release $TAG is already published; nothing to do"
+            exit 0
+          fi
+          prerelease=false
+          latest=true
+          case "$TAG" in
+            *-*) prerelease=true; latest=false ;;
+          esac
+          gh release edit "$TAG" --draft=false --prerelease="$prerelease" --latest="$latest" --verify-tag
+          echo "published $TAG (prerelease=$prerelease, latest=$latest)"

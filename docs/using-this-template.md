@@ -19,12 +19,13 @@ grep -rn "rust-agents-template" . --exclude-dir={.git,target}
 | 2 | `Cargo.lock` | no manual edit — regenerate with `cargo build` (or delete it first) |
 | 3 | `tests/cli.rs` | `env!("CARGO_BIN_EXE_rust-agents-template")` → your new binary name |
 | 4 | `.github/workflows/release.yml` | `bin: rust-agents-template` → your new binary name |
-| 5 | `Containerfile` | `COPY bin/${TARGETARCH}/rust-agents-template` → your new binary name |
-| 6 | `justfile` | top comment (cosmetic) |
-| 7 | `README.md` / `README.zh.md` | title, badge URLs, clone URL, intro text |
-| 8 | `LICENSE` / `LICENSE-MIT` / `LICENSE-APACHE` | copyright holder and year |
-| 9 | `SECURITY.md`, `CONTRIBUTING.md`, `AGENTS.md` | optional: adjust contact / wording |
-| 10 | `src/main.rs` | crate-level doc comment (missing_docs is enforced) |
+| 5 | `.github/workflows/test-build.yml` | both `target/.../release/rust-agents-template[.exe]` artifact paths → your new binary name |
+| 6 | `Containerfile` | `COPY bin/${TARGETARCH}/rust-agents-template` → your new binary name |
+| 7 | `justfile` | top comment (cosmetic); `just image` derives the package name automatically |
+| 8 | `README.md` / `README.zh.md` | title, badge URLs, clone URL, intro text |
+| 9 | `LICENSE` / `LICENSE-MIT` / `LICENSE-APACHE` | copyright holder and year |
+| 10 | `SECURITY.md`, `CONTRIBUTING.md`, `AGENTS.md` | optional: adjust contact / wording |
+| 11 | `src/main.rs` | crate-level doc comment (missing_docs is enforced) |
 
 Files that need **no** change: `rust-toolchain.toml`, `deny.toml`,
 `githooks/*`, `.editorconfig`, `docs/*` (relative links), `.github/dependabot.yml`.

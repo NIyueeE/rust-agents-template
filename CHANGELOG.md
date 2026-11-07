@@ -35,6 +35,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release publishes a draft first, attaches SHA-256 checksums, builds and
   pushes a GHCR image from a scratch `Containerfile`, and only then publishes
   the release. A failed platform or image leaves a draft.
+- A tuned `[profile.release]`: thin LTO, one codegen unit, abort on panic and
+  stripped symbols.
+- `just image` builds the static musl binary and the scratch GHCR image, then
+  smoke-tests it; CI runs the same recipe on every code change, and the
+  release image job reuses it.
+- Pre-release tags (`vX.Y.Z-rc.N`) are supported: the GitHub release is
+  marked prerelease, and neither GitHub's "Latest" nor the GHCR `latest` tag
+  moves.
 
 ### Changed
 
@@ -54,6 +62,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   groups its updates.
 - `githooks/check-docs` now checks the CI, release, security and GHCR wiring,
   and `githooks/check-secrets` accepts a commit range for CI.
+- Release binaries build with `--locked`; Linux archives use static musl, and
+  the test-build Linux target matches the release target.
+
+### Fixed
+
+- The release `publish` job sets `GH_REPO`, so `gh release edit` works without
+  a checkout in the workspace.
+- Prerelease tags no longer publish as stable or overwrite the GHCR `latest`
+  tag.
 
 ## [0.1.0] - 2026-08-31
 

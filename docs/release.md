@@ -38,16 +38,25 @@ anything. A tag cut from an unmerged commit or a red tree fails there.
 
 ## Container image (GHCR)
 
-The release also builds a `linux/amd64` image from a static musl binary and
-pushes it to `ghcr.io/<owner>/<repo>` with two tags: the release tag and
-`latest`. [Containerfile](../Containerfile) is the recipe; the build context
-contains only the binary under `bin/amd64` plus that file.
+The Linux release archive is built from a static musl binary, so it does not
+depend on the runner's glibc, and the release also builds a `linux/amd64` image
+from the same static musl target. `just image` is the single recipe used
+locally, in CI and by the release image job: it builds the musl binary, builds
+the scratch image and smoke-tests it. [Containerfile](../Containerfile) is the recipe; the build
+context contains only the binary under `bin/amd64` plus that file. CI runs
+`just image` on every code change, so a broken Containerfile does not wait for
+a release.
 
-The image is built and smoke-tested before it is pushed. GHCR package
-visibility is a repository setting: the first push creates a private package;
-make it public in the package settings if the template should publish
-publicly. To add `linux/arm64`, build a second musl binary into
-`bin/arm64` and extend the image step with buildx.
+The image is pushed to `ghcr.io/<owner>/<repo>` with the release tag and, for
+stable releases only, `latest`. A pre-release tag (`vX.Y.Z-rc.N`) is marked as
+a GitHub prerelease and does not move `latest`, matching the release itself.
+The OCI `org.opencontainers.image.source` label links the package to the
+repository.
+
+GHCR package visibility is a repository setting: the first push creates a
+private package; make it public in the package settings if the template should
+publish publicly. To add `linux/arm64`, build a second musl binary into
+`bin/arm64` and extend the recipe with buildx.
 
 The image job runs after every release binary and before the draft release is
 published. If it fails, the GitHub Release stays a draft.
@@ -71,6 +80,11 @@ retention) and never published as a Release. Releases stay tag-driven.
 - **The tag and `Cargo.toml` must agree.** `githooks/pre-tag` checks it
   locally and `release.yml` checks it again on the tag; the version in
   `Cargo.toml` is the single source.
+- **Archives and the image use the tuned release profile.** Linux is
+  `x86_64-unknown-linux-musl`, macOS is `aarch64-apple-darwin`, Windows is
+  `x86_64-pc-windows-msvc`. Every binary is built with `--locked` and the
+  `[profile.release]` settings (thin LTO, one codegen unit, abort on panic,
+  stripped symbols).
 - **The release is draft-first.** A tag creates a draft release; binaries,
   SHA-256 checksums and the container image are attached while it is still a
   draft, and only the final `publish` job makes it public. A failed platform or
@@ -81,8 +95,11 @@ retention) and never published as a Release. Releases stay tag-driven.
   notes.
 - **Permissions are per job.** Release jobs need `contents: write`; the image
   job needs `packages: write`; the preflight job only reads.
-- Re-running a failed build: delete and re-push the tag
-  (`git push origin :v0.2.0`), or re-run the workflow from the Actions tab.
-  Deleting a tag is allowed only to fix a failed release.
+- Re-running a failed build: re-run the workflow from the Actions tab.
+  `create-release` reuses the existing draft and the upload action replaces
+  existing assets; a re-run refuses to mutate a release that is already
+  public. If the draft is gone, delete and re-push the tag
+  (`git push origin :v0.2.0`). Deleting a tag is allowed only to fix a failed
+  release.
 - Verify a commit without releasing with the test build above; never use a
   release tag as a build test.

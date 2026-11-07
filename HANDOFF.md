@@ -32,13 +32,19 @@ something the next session needs to know.
   `AGENTS.md`, `HANDOFF.md`, `CONTRIBUTING.md`, `SECURITY.md` and
   `CHANGELOG.md` are English-only.
 - CI/CD overhaul landed: the diff-range secret scan, context-free CI gates
-  (`just verify` / `build-release` / `deps`), macOS/Windows tests,
+  (`just verify` / `build-release` / `deps` / `image`), macOS/Windows tests,
   actionlint/shellcheck/check-docs self-test, weekly security workflow, and a
   draft-first release with SHA-256 checksums and a GHCR image. Main CI at
   `17834fc` is green, including the macOS 26 and Windows 2022 test legs; the
-  manual security workflow is green. The GHCR image job needs a release tag
-  and has not run on GitHub; its musl build and scratch-image run were
-  verified locally with podman.
+  manual security workflow is green.
+- The image path is now exercised in CI (`just image` builds the static musl
+  binary, the scratch image and smoke-tests it), so the Containerfile is no
+  longer release-only. The release review found and fixed four gaps: the
+  publish job had no `GH_REPO`, upload builds were not `--locked`, the
+  documented LTO/panic/strip release profile was missing from `Cargo.toml`,
+  and prerelease tags would have moved `latest`. The GHCR push and the full
+  draft/upload/publish chain still require a real release tag; the local musl
+  build and scratch-image run were verified with podman.
 - Release state: **v0.1.0 is the released baseline**. **v0.2.0 is the prepared
   next release**: `Cargo.toml` / `Cargo.lock` are 0.2.0, `CHANGELOG.md` has a
   dated `## [0.2.0] - 2026-11-07` section with an empty `[Unreleased]`, and
@@ -96,6 +102,15 @@ something the next session needs to know.
 - Releases are draft-first: a tag creates a draft; binaries, checksums and the
   GHCR image are attached; a final `publish` job makes it public. A failed
   platform or image leaves a draft.
+- The image is built by one `just image` recipe shared by local runs, CI and
+  the release image job; CI smoke-tests it, so the Containerfile is not
+  release-only. Linux release archives use the same static musl target.
+- `Cargo.toml` now carries the documented release profile (thin LTO, one
+  codegen unit, abort on panic, stripped symbols), and release uploads build
+  with `--locked`.
+- The `publish` job has no checkout, so it must set `GH_REPO`; without it
+  `gh release edit` cannot resolve the repository. Prerelease tags are marked
+  prerelease and do not move GitHub or GHCR `latest`.
 - `cargo outdated` moved out of the blocking chain: a new upstream release is
   not a defect in this tree. It runs advisory in the scheduled security
   workflow.
@@ -112,20 +127,22 @@ something the next session needs to know.
   grows past ~10 tests.
 - Consider tag-protection rulesets (restrict `v*` creation) if the repo gains
   collaborators.
-- `test-build.yml` was re-dispatched after the pinned-runner change: linux,
-  macOS and Windows all built successfully. The macOS/Windows CI legs passed
-  on `main`; the GHCR image job still requires a release tag.
+- `test-build.yml` was re-dispatched after the pinned-runner change, but
+  before Linux moved to musl; re-dispatch after the next push to validate the
+  static Linux target. The macOS/Windows CI legs passed on `main`; the GHCR
+  image job still requires a release tag.
 - Branch protection on `main` must keep requiring the `full check chain`
   context; that name is now produced by the always-running `gate` job.
 - v0.2.0 is prepared, not tagged. Creating the tag is a deliberate human act
-  (AGENTS.md §5); when asked, run `just tag` and push the tag.
+  (AGENTS.md §5); when asked, run `just tag` and push the tag. Only that run
+  exercises draft creation, asset upload, GHCR push and the final publish.
 - The GHCR package is private on first push; make it public in package
   settings if the image should be publicly pullable. The image is amd64-only;
   arm64 is a documented extension, not implemented.
 - `dtolnay/rust-toolchain` is pinned to a branch-head commit (`# stable branch
   head`), so it may need a manual bump rather than a Dependabot PR.
 - Next batches (not started): ownership/audience table (B4), `native_target`
-  cfg (C2), profiles + `panic` lint (C4), HANDOFF archive rotation (C7).
+  cfg (C2), `panic` lint (C4), HANDOFF archive rotation (C7).
 
 ## Gotchas
 

@@ -9,7 +9,7 @@ Checks are split by moment and weight:
 | every commit | `githooks/pre-commit` | fast | code quality: fmt, secrets, machete, docs sync, clippy |
 | every branch push | `githooks/pre-push` | heavy | security, dependency policy, tests |
 | every release tag | `githooks/pre-tag` | light | release state: tag↔version, changelog shape, clean tree, advisory checklist |
-| every PR / main push | `ci.yml` | full | deterministic gates, release build, three-platform tests, workflow/hook lint |
+| every PR / main push | `ci.yml` | full | deterministic gates, release build, three-platform tests, image smoke test, workflow/hook lint |
 | weekly / manual | `security.yml` | audit | advisories and dependency policy on an unchanged tree |
 
 The local split is deliberate: pre-commit is the fast quality loop, pre-push
@@ -37,6 +37,10 @@ cargo install cargo-machete cargo-audit cargo-outdated cargo-deny --locked
 `rust-toolchain.toml`. CI installs `cargo-machete`, `cargo-audit` and
 `cargo-deny`; the scheduled security workflow also installs
 `cargo-outdated` for its advisory freshness line.
+
+The image recipe (`just image`) additionally needs `musl-gcc` (the
+`musl-tools` package on Debian/Ubuntu), `rustup`, and `docker` or `podman`;
+it is Linux-only. CI and the release image job install `musl-tools`.
 
 ## The docs-only path (both `pre-commit` and `pre-push`)
 
@@ -119,7 +123,8 @@ the diff with `githooks/docs-only` and publishes the commit range. For code
 changes:
 
 - `rust gates` scans the range for secrets, runs `just verify`, builds the
-  release profile with `just build-release`, and runs `just deps`;
+  release profile with `just build-release`, runs `just deps`, and
+  builds/smoke-tests the static musl GHCR image with `just image`;
 - `platform tests` runs `cargo test --locked` on `macos-26` and `windows-2022`;
 - `lint` runs `actionlint`, `shellcheck -x githooks/* tests/check-docs.sh`, and
   the `check-docs` self-test.
@@ -150,6 +155,7 @@ dispatch. It re-checks the unchanged tree with `cargo audit` and
 just check              # local hooks: pre-commit + pre-push
 just verify             # deterministic CI/release gates (no network audit)
 just build-release      # release profile (LTO/panic=abort/strip)
+just image              # static musl binary + scratch GHCR image (smoke-tested)
 just deps               # machete + audit + deny
 just freshness          # advisory: outdated direct dependencies
 just docs-gate-selfcheck # a broken docs mirror must fail
