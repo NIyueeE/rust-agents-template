@@ -64,6 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `githooks/check-secrets` accepts a commit range for CI.
 - Release binaries build with `--locked`; Linux archives use static musl, and
   the test-build Linux target matches the release target.
+- Draft releases are never marked latest; the publish job sets that marker
+  only after all artifacts are ready.
 
 ### Fixed
 

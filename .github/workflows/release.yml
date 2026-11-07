@@ -138,12 +138,12 @@ jobs:
             echo "::error::CHANGELOG.md has no dated '## [$VERSION] - YYYY-MM-DD' section. Add it before tagging."
             exit 1
           fi
-          # A prerelease must not become GitHub's "Latest" release. The image
-          # job applies the same rule to the GHCR `latest` tag.
+          # A prerelease must not become GitHub's "Latest" release. The
+          # `publish` job sets the latest marker after the draft is complete;
+          # drafts themselves are never marked latest.
           prerelease=false
-          latest=true
           case "$TAG" in
-            *-*) prerelease=true; latest=false ;;
+            *-*) prerelease=true ;;
           esac
           if gh release view "$TAG" >/dev/null 2>&1; then
             is_draft="$(gh release view "$TAG" --json isDraft --jq .isDraft)"
@@ -152,10 +152,10 @@ jobs:
               exit 1
             fi
             gh release edit "$TAG" --title "$TAG" --notes-file release-notes.md \
-              --prerelease="$prerelease" --latest="$latest" --verify-tag
+              --prerelease="$prerelease" --verify-tag
           else
             gh release create "$TAG" --title "$TAG" --notes-file release-notes.md \
-              --draft --prerelease="$prerelease" --latest="$latest" --verify-tag
+              --draft --prerelease="$prerelease" --verify-tag
           fi
 
   upload:
