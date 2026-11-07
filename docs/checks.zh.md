@@ -108,7 +108,7 @@ commit,所以重推旧标签审查的是那个标签的状态,不是工作树)�
 
 - `rust gates` 扫描 range 里的密钥,运行 `just verify`,用
   `just build-release` 构建 release profile,并运行 `just deps`;
-- `platform tests` 在 `macos-14` 和 `windows-2022` 上运行
+- `platform tests` 在 `macos-26` 和 `windows-2022` 上运行
   `cargo test --locked`;
 - `lint` 运行 `actionlint`、`shellcheck -x githooks/* tests/check-docs.sh` 和
   `check-docs` 自测。

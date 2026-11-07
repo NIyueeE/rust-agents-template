@@ -120,7 +120,7 @@ changes:
 
 - `rust gates` scans the range for secrets, runs `just verify`, builds the
   release profile with `just build-release`, and runs `just deps`;
-- `platform tests` runs `cargo test --locked` on `macos-14` and `windows-2022`;
+- `platform tests` runs `cargo test --locked` on `macos-26` and `windows-2022`;
 - `lint` runs `actionlint`, `shellcheck -x githooks/* tests/check-docs.sh`, and
   the `check-docs` self-test.
 
