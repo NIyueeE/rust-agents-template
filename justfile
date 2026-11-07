@@ -52,7 +52,32 @@ tag:
     git tag -a "v${version}" -m "v${version}"
     echo "tagged v${version} — push it deliberately: git push origin v${version}"
 
-# Run the full check chain (identical to hooks + CI: fmt/machete/docs/clippy + audit/deny/outdated/test).
+# Deterministic gates for CI and release preflight: no Git context, no network audit.
+verify:
+    cargo fmt --all -- --check
+    githooks/check-docs
+    cargo clippy --all-targets --all-features -- -D warnings
+    cargo test --locked
+
+# Build the release profile (LTO/panic=abort/strip are exercised here).
+build-release:
+    cargo build --release --locked
+
+# Dependency policy: unused dependencies + advisories/licenses. `just setup` installs the tools.
+deps:
+    cargo machete
+    cargo audit
+    cargo deny check
+
+# Advisory-only freshness check; not part of the blocking chain.
+freshness:
+    cargo outdated --root-deps-only
+
+# Self-test the docs-alignment gate: a broken mirror must fail.
+docs-gate-selfcheck:
+    tests/check-docs.sh
+
+# Run the full local check chain (pre-commit + pre-push hooks).
 check:
     #!/usr/bin/env bash
     set -euo pipefail

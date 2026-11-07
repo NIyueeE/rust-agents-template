@@ -28,5 +28,5 @@ pre-commit hook 额外传入 `-D warnings`,因此上述所有警告(包括 `miss
 - 仅有的两类合法场景:(1)业务上确实迫不得已;(2)上游误报(宏、生成代码、
   依赖自身的审计噪音)。
 
-其他所有检查门(machete、audit、deny、outdated、docs-sync 以及未来新增的)
+其他所有检查门(machete、audit、deny、docs-sync 以及未来新增的)
 适用同一纪律。完整守则见 [AGENTS.md](../AGENTS.md)。

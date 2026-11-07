@@ -29,4 +29,4 @@ including `missing_docs` and `todo` — becomes a hard error at commit time.
   false positives (macros, generated code, dependency audit noise).
 
 The same discipline applies to every other gate (machete, audit, deny,
-outdated, docs-sync, and anything added later). Full rules: [AGENTS.md](../AGENTS.md).
+docs-sync, and anything added later). Full rules: [AGENTS.md](../AGENTS.md).

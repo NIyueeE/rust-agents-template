@@ -61,7 +61,7 @@ for doc in docs/checks.md docs/checks.zh.md; do
              /^## / { in_gate = ($0 ~ /pre-commit|pre-push|pre-tag/); next }
              in_gate { print }
            ' "$doc" \
-             | grep -oE '`(cargo [a-z-]+|githooks/[a-z-]+)[^`]*`' \
+             | grep -oE "\`(cargo [a-z-]+|githooks/[a-z-]+)[^\`]*\`" \
              | tr -d '`' | sort -u)
 done
 
@@ -180,9 +180,17 @@ while IFS= read -r zh; do
   fi
 done < <(git ls-files 'docs/*.zh.md')
 
-# 9) CI must run the same chain
+# 9) CI runs the deterministic gates, platform tests and meta-lint
 if [ -f .github/workflows/ci.yml ]; then
-  expect "CI runs the full chain" .github/workflows/ci.yml 'just check'
+  expect "CI runs the deterministic gate chain" .github/workflows/ci.yml 'just verify'
+  expect "CI builds the release profile" .github/workflows/ci.yml 'just build-release'
+  expect "CI runs the dependency policy" .github/workflows/ci.yml 'just deps'
+  expect "CI scans the diff for secrets" .github/workflows/ci.yml 'githooks/check-secrets'
+  expect "CI runs the docs gate" .github/workflows/ci.yml 'githooks/check-docs'
+  expect "CI runs platform tests" .github/workflows/ci.yml 'cargo test --locked'
+  expect "CI lints workflows" .github/workflows/ci.yml 'actionlint'
+  expect "CI lints hooks" .github/workflows/ci.yml 'shellcheck -x githooks/* tests/check-docs.sh'
+  expect "CI self-tests the docs gate" .github/workflows/ci.yml 'tests/check-docs.sh'
 else
   echo "  FAIL  .github/workflows/ci.yml missing (README badge references it)" >&2
   errors=$((errors + 1))
@@ -195,6 +203,21 @@ if [ -f .github/workflows/release.yml ]; then
   expect "release docs mention CHANGELOG" docs/release.zh.md 'CHANGELOG'
 else
   echo "  FAIL  .github/workflows/release.yml missing (see docs/release.md)" >&2
+  errors=$((errors + 1))
+fi
+
+# 10c) release preflight and GHCR image
+if [ -f Containerfile ]; then
+  expect "release creates a draft first" .github/workflows/release.yml '--draft'
+  expect "release publishes after artifacts" .github/workflows/release.yml '--draft=false'
+  expect "release pushes a GHCR image" .github/workflows/release.yml 'ghcr.io'
+  expect "release smoke-tests the image" .github/workflows/release.yml 'Hello, world!'
+  expect "release docs mention Containerfile" docs/release.md 'Containerfile'
+  expect "release docs mention Containerfile (zh)" docs/release.zh.md 'Containerfile'
+  expect "release docs mention GHCR" docs/release.md 'GHCR'
+  expect "release docs mention GHCR (zh)" docs/release.zh.md 'GHCR'
+else
+  echo "  FAIL  Containerfile missing (release image)" >&2
   errors=$((errors + 1))
 fi
 
@@ -245,6 +268,17 @@ if [ -f githooks/check-secrets ]; then
   expect "secret scan documented" docs/checks.zh.md 'githooks/check-secrets'
 else
   echo "  FAIL  githooks/check-secrets missing (AGENTS.md §9 secrets discipline)" >&2
+  errors=$((errors + 1))
+fi
+
+# 15) scheduled security workflow
+if [ -f .github/workflows/security.yml ]; then
+  expect "scheduled security runs cargo audit" .github/workflows/security.yml 'cargo audit'
+  expect "scheduled security runs cargo deny" .github/workflows/security.yml 'cargo deny check'
+  expect "security docs mention cargo audit" docs/checks.md 'cargo audit'
+  expect "security docs mention cargo deny" docs/checks.zh.md 'cargo deny check'
+else
+  echo "  FAIL  .github/workflows/security.yml missing (scheduled audit)" >&2
   errors=$((errors + 1))
 fi
 

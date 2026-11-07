@@ -18,11 +18,12 @@ grep -rn "rust-agents-template" . --exclude-dir={.git,target}
 | 2 | `Cargo.lock` | 无需手动改 —— `cargo build` 会自动再生(也可以先删掉) |
 | 3 | `tests/cli.rs` | `env!("CARGO_BIN_EXE_rust-agents-template")` → 新的二进制名 |
 | 4 | `.github/workflows/release.yml` | `bin: rust-agents-template` → 新的二进制名 |
-| 5 | `justfile` | 顶部注释(仅文案) |
-| 6 | `README.md` / `README.zh.md` | 标题、徽章 URL、克隆 URL、简介文案 |
-| 7 | `LICENSE` / `LICENSE-MIT` / `LICENSE-APACHE` | 版权持有人与年份 |
-| 8 | `SECURITY.md`、`CONTRIBUTING.md`、`AGENTS.md` | 可选:调整联系方式 / 措辞 |
-| 9 | `src/main.rs` | crate 级文档注释(missing_docs 强制) |
+| 5 | `Containerfile` | `COPY bin/${TARGETARCH}/rust-agents-template` → 新的二进制名 |
+| 6 | `justfile` | 顶部注释(仅文案) |
+| 7 | `README.md` / `README.zh.md` | 标题、徽章 URL、克隆 URL、简介文案 |
+| 8 | `LICENSE` / `LICENSE-MIT` / `LICENSE-APACHE` | 版权持有人与年份 |
+| 9 | `SECURITY.md`、`CONTRIBUTING.md`、`AGENTS.md` | 可选:调整联系方式 / 措辞 |
+| 10 | `src/main.rs` | crate 级文档注释(missing_docs 强制) |
 
 **无需改动**的文件:`rust-toolchain.toml`、`deny.toml`、`githooks/*`、
 `.editorconfig`、`docs/*`(均为相对链接)、`.github/dependabot.yml`。
@@ -45,3 +46,5 @@ git add -A && git commit -m "chore: rename project"   # pre-commit 在此自动�
   ([Lint 策略](lint-policy.zh.md))
 - 要发布二进制:先跑 `just tag`(本地发布审查 + 创建标签),再推送该
   `v*` 标签([发布](release.zh.md))
+- GHCR 镜像名自动跟随仓库名;派生项目要公开发布时,在包的设置里把可见性
+  改成 public

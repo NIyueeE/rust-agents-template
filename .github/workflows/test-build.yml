@@ -21,16 +21,17 @@ run-name: Test build ${{ inputs.ref }} [${{ inputs.targets }}]
 permissions:
   contents: read
 
-# One dispatch per ref: an artifacts-only build has no reason to run twice at
-# once, and the matrix legs would compete for the same cache keys.
+# One dispatch per ref and target set: a repeated linux build cancels itself,
+# but a linux build and a windows build for the same ref can run side by side.
 concurrency:
-  group: test-build-${{ inputs.ref }}
+  group: test-build-${{ inputs.ref }}-${{ inputs.targets }}
   cancel-in-progress: true
 
 jobs:
   plan:
     name: plan matrix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
@@ -39,12 +40,15 @@ jobs:
         env:
           REQUESTED: ${{ inputs.targets }}
         run: |
-          MATRIX=$(printf '%s' "$REQUESTED" | tr ', ' '\n\n' | sed '/^$/d' | jq -Rsc '
+          MATRIX=$(printf '%s' "$REQUESTED" \
+            | tr ',' '\n' \
+            | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d' \
+            | jq -Rsc '
             def platform:
               {
-                "linux":   {os: "ubuntu-latest",  target: "x86_64-unknown-linux-gnu"},
-                "macos":   {os: "macos-latest",   target: "aarch64-apple-darwin"},
-                "windows": {os: "windows-latest", target: "x86_64-pc-windows-msvc"}
+                "linux":   {os: "ubuntu-24.04",  target: "x86_64-unknown-linux-gnu"},
+                "macos":   {os: "macos-14",      target: "aarch64-apple-darwin"},
+                "windows": {os: "windows-2022",  target: "x86_64-pc-windows-msvc"}
               }[.];
             split("\n")
             | map(select(length > 0)
@@ -62,6 +66,7 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

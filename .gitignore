@@ -1,1 +1,4 @@
 /target
+
+# release.yml stages the musl binary here for the GHCR image
+/bin/

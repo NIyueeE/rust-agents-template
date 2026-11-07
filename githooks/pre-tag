@@ -7,7 +7,7 @@
 #      (pre-push passes --tag and --commit of the tagged state)
 #
 # Scope is deliberately light: greppable release-state invariants plus an
-# advisory review checklist. Heavy gates (audit, deny, outdated, tests) stay
+# advisory review checklist. Heavy gates (audit, deny, tests) stay
 # in pre-push and CI; release.yml re-enforces the version and changelog
 # invariants remotely. Nothing here replaces a human/agent review of the
 # CHANGELOG and the docs — see the checklist at the bottom.
@@ -124,9 +124,10 @@ cat <<'EOF'
   [ ] Docs audit: version numbers, config examples and claims in README.md /
       README.zh.md / docs/ still hold at this commit
   [ ] Heavy gates green on this commit: 'just check' (pre-commit + pre-push);
-      CI runs the identical chain
+      release preflight re-runs 'just verify' and 'just deps'
   [ ] Release is deliberate (AGENTS.md §5): explicit human request — pushing
-      the tag publishes the release directly
+      the tag starts a draft release, published only after binaries, checksums
+      and the image are ready
 EOF
 
 echo

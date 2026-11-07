@@ -19,11 +19,12 @@ grep -rn "rust-agents-template" . --exclude-dir={.git,target}
 | 2 | `Cargo.lock` | no manual edit — regenerate with `cargo build` (or delete it first) |
 | 3 | `tests/cli.rs` | `env!("CARGO_BIN_EXE_rust-agents-template")` → your new binary name |
 | 4 | `.github/workflows/release.yml` | `bin: rust-agents-template` → your new binary name |
-| 5 | `justfile` | top comment (cosmetic) |
-| 6 | `README.md` / `README.zh.md` | title, badge URLs, clone URL, intro text |
-| 7 | `LICENSE` / `LICENSE-MIT` / `LICENSE-APACHE` | copyright holder and year |
-| 8 | `SECURITY.md`, `CONTRIBUTING.md`, `AGENTS.md` | optional: adjust contact / wording |
-| 9 | `src/main.rs` | crate-level doc comment (missing_docs is enforced) |
+| 5 | `Containerfile` | `COPY bin/${TARGETARCH}/rust-agents-template` → your new binary name |
+| 6 | `justfile` | top comment (cosmetic) |
+| 7 | `README.md` / `README.zh.md` | title, badge URLs, clone URL, intro text |
+| 8 | `LICENSE` / `LICENSE-MIT` / `LICENSE-APACHE` | copyright holder and year |
+| 9 | `SECURITY.md`, `CONTRIBUTING.md`, `AGENTS.md` | optional: adjust contact / wording |
+| 10 | `src/main.rs` | crate-level doc comment (missing_docs is enforced) |
 
 Files that need **no** change: `rust-toolchain.toml`, `deny.toml`,
 `githooks/*`, `.editorconfig`, `docs/*` (relative links), `.github/dependabot.yml`.
@@ -47,3 +48,6 @@ still agree with the code you just renamed.
   a reason ([Lint policy](lint-policy.md))
 - to ship binaries: run `just tag` (local review + tag), then push the
   `v*` tag ([Release](release.md))
+- the GHCR image name follows the repository name automatically; make the
+  package public in its package settings if the derived project should publish
+  it publicly

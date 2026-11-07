@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pre-push hook (heavyweight gates + tag review dispatch): audit + dependency
-# policy + freshness + tests guard every branch push. A push carrying a `v*`
+# policy + tests guard every branch push. A push carrying a `v*`
 # tag is a release act (AGENTS.md §5): the light release review
 # (githooks/pre-tag) runs for it, and a tag-only push stops there — the tagged
 # commit's heavy gates ran when its branch was pushed, and re-running them
@@ -22,7 +22,7 @@ branch_pushed=0
 docs_only=1
 if [ ! -t 0 ]; then
   zeros="0000000000000000000000000000000000000000"
-  while read -r local_ref local_sha remote_ref remote_sha; do
+  while read -r local_ref local_sha _remote_ref remote_sha; do
     case "$local_ref" in
       refs/tags/v*)
         if [ "$local_sha" != "$zeros" ]; then
@@ -38,7 +38,7 @@ if [ ! -t 0 ]; then
         ;;
     esac
     # Classify the commits this push carries: a branch push whose commits only
-    # touch markdown, docs/ or assets/ cannot move audit/deny/outdated/test, so
+    # touch markdown, docs/ or assets/ cannot move audit/deny/test, so
     # it runs the doc gate instead (the same split CI makes). A new branch has
     # nothing to diff against and takes the full chain; a tag push never takes
     # the shortcut.
@@ -63,7 +63,7 @@ if [ "$tag_pushed" -eq 1 ] && [ "$branch_pushed" -eq 0 ]; then
 fi
 
 if [ "$pushed_any" -eq 1 ] && [ "$tag_pushed" -eq 0 ] && [ "$docs_only" -eq 1 ]; then
-  echo "==> docs-only push: skipping audit / deny / outdated / test"
+  echo "==> docs-only push: skipping audit / deny / test"
   echo "==> docs alignment (githooks/check-docs)"
   githooks/check-docs
   echo "pre-push checks passed (docs-only)"
@@ -75,9 +75,6 @@ cargo audit
 
 echo "==> cargo deny (licenses / bans / advisories policy)"
 cargo deny check
-
-echo "==> cargo outdated (root dependencies)"
-cargo outdated --root-deps-only
 
 echo "==> cargo test"
 cargo test --quiet

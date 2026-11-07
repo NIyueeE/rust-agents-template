@@ -1,5 +1,6 @@
 # cargo-deny policy — https://embarkstudios.github.io/cargo-deny/
-# Wired into githooks/pre-push and CI via `just check`.
+# Wired into githooks/pre-push via `just deps`; CI runs `just deps` and the
+# scheduled security workflow runs cargo deny.
 
 [graph]
 # collect metadata with all features so no platform/feature dep tree is missed
@@ -7,6 +8,9 @@ all-features = true
 
 [licenses]
 version = 2
+# The allowlist is deliberately wider than this template's empty dependency
+# graph; an allowance nothing exercises yet is not a policy failure.
+unused-allowed-license = "allow"
 # permissive licenses accepted for dependencies; extend as needed
 allow = [
     "MIT",

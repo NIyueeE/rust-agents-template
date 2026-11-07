@@ -1,0 +1,5 @@
+# The image only needs the pre-built binary and this Containerfile.
+*
+!Containerfile
+!bin/
+!bin/**

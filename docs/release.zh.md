@@ -29,9 +29,25 @@ git push origin v0.2.0   # 这才是真正的发布动作
 | 工作树干净、标签不存在(仅本地 `just tag`) | 会漏掉未提交状态的标签,或已经存在的标签 |
 | 人工清单 | 没有机械检查——由人/agent 审阅 changelog、docs 和 `just check` 结果 |
 
-只推标签时,审查完就停:被标记 commit 的重门在它推分支时已经跑过,在标签上
-重跑会让发布依赖本地机器。如果标签的 commit 从未经过分支推送,先在它上面跑
-`just check`。
+只推标签时,本地审查完就停:被标记 commit 的重门在它推分支时已经跑过。远端
+工作流不依赖这段历史。它证明标签的 commit 在 `main` 上,用 `--locked` 校验
+`Cargo.lock`,并在构建任何产物之前重跑 `just verify` 和 `just deps`。从未合并
+的 commit 或红的树切出的标签会在这里失败。
+
+## 容器镜像(GHCR)
+
+发布还会构建一个 `linux/amd64` 镜像,从静态 musl 二进制打包,推送到
+`ghcr.io/<owner>/<repo>`,带两个 tag:发布标签和 `latest`。镜像配方是
+[Containerfile](../Containerfile);构建上下文只包含 `bin/amd64` 下的二进制和
+这个文件。
+
+镜像在推送前会先构建并做 smoke test。GHCR 包的可见性是仓库设置:首次推送会
+创建 private 包;如果模版要公开发布,在包设置里改成 public。要加
+`linux/arm64`,把第二个 musl 二进制放进 `bin/arm64`,并用 buildx 扩展镜像
+步骤。
+
+镜像 job 在所有发布二进制之后、draft release 发布之前运行。它失败时,GitHub
+Release 会保持 draft。
 
 ## 测试构建(不是发布)
 
@@ -49,10 +65,14 @@ git push origin v0.2.0   # 这才是真正的发布动作
   缺陷;唯一性检查就是为它存在的。
 - **标签必须与 `Cargo.toml` 一致。** `githooks/pre-tag` 在本地检查,
   `release.yml` 在标签上再检查一次;`Cargo.toml` 里的版本是唯一来源。
+- **发布是 draft 优先的。** 打标签先创建 draft release;二进制、SHA-256
+  校验和与容器镜像都挂在 draft 上,最后才由 `publish` job 公开发布。平台或
+  镜像失败只会留下 draft,不会出现残缺的公开 release。
 - **工作流会重新校验 changelog 约束。** 用 `git tag` 而不是 `just tag` 创建的
   本地标签,在推送时仍会被审查;缺失或形态不对的小节会让发布失败,而不是
   发布空说明。
-- 该工作流需要 `contents: write` 权限——文件里已声明。
+- **权限按 job 分配。** 发布 job 需要 `contents: write`;镜像 job 需要
+  `packages: write`;preflight job 只读。
 - 构建失败重跑:删除并重推标签(`git push origin :v0.2.0`),或在 Actions 页面
   直接 re-run。删除标签只允许用于修复失败的发布。
 - 要验证某个 commit 而不发布,用上面的测试构建;不要把发布标签当构建测试。

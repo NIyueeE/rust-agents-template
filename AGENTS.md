@@ -19,7 +19,9 @@ Before touching anything, verify three things:
    git config core.hooksPath githooks
    ```
 
-2. **hook dependencies are installed** — four external tools must be on PATH:
+2. **check tools are installed** — four external tools must be on PATH
+   (`cargo-outdated` is for the advisory `just freshness` recipe and the
+   scheduled security workflow):
 
    ```bash
    command -v cargo-machete cargo-audit cargo-outdated cargo-deny
@@ -63,16 +65,18 @@ code-level.**
   2. **upstream problems** — false positives, macro/derive-generated code, or
      audit noise from dependencies themselves (e.g. RustSec unmaintained
      notices).
-- All other audits and extra checks (machete, audit, deny, outdated,
-  docs-sync, and anything added later) follow the **same discipline**: fix if
+- All other audits and extra checks (machete, audit, deny, docs-sync, and
+  anything added later) follow the **same discipline**: fix if
   fixable; waive only as above when truly unfixable. Never delete, comment
   out, or bypass a check.
-- The chain has three moments: **fast gates** (`githooks/pre-commit`: fmt /
-  secrets / machete / docs / clippy) run on commit, **heavy gates**
-  (`githooks/pre-push`: audit / deny / outdated / test) run on push, and the
-  **release review** (`githooks/pre-tag`: tag↔version, changelog shape, clean
-  tree, advisory checklist) runs on a `v*` tag. CI runs the pre-commit +
-  pre-push chain via `just check`; the review is not part of `just check`.
+- The chain has three local moments: **fast gates** (`githooks/pre-commit`:
+  fmt / secrets / machete / docs / clippy) run on commit, **heavy gates**
+  (`githooks/pre-push`: audit / deny / test) run on push, and the **release
+  review** (`githooks/pre-tag`: tag↔version, changelog shape, clean tree,
+  advisory checklist) runs on a `v*` tag. CI runs the context-free gates
+  (`just verify`, `just deps`, `just build-release`) plus macOS/Windows tests
+  and workflow/hook lint; a scheduled security workflow re-checks advisories
+  on an unchanged tree. The release review is not part of `just check`.
   All of them are "the checks" and bound by this discipline.
 
 ## 3. Before every commit: docs ↔ code alignment (every commit)
@@ -99,8 +103,9 @@ code-level.**
   pre-commit chain. It only covers greppable invariants (hook commands ↔
   docs/checks in both directions, lint names ↔ docs/lint-policy, edition,
   channel, just recipes cited by live pages, README docs index, mirror
-  completeness and heading parity, CI entry, CHANGELOG extraction and
-  skeleton, test-build entry, secret-scan and pre-tag wiring).
+  completeness and heading parity, CI/release/security/GHCR wiring,
+  CHANGELOG extraction and skeleton, test-build entry, secret-scan and
+  pre-tag wiring).
   **Semantic alignment** (outdated prose, runnable examples, consistent tone)
   cannot be mechanized — it stays with the agent or a human reviewer.
 
@@ -131,11 +136,13 @@ code-level.**
   `## [x.y.z] - YYYY-MM-DD` (the git tag is the same version with a `v`
   prefix, e.g. `v0.2.0`).
 - Pushing a `v*` tag triggers `.github/workflows/release.yml`, which:
-  1. extracts the section matching the tag from `CHANGELOG.md` and uses it as
-     the release notes,
-  2. creates the GitHub Release,
-  3. builds and attaches archives for three targets (x86_64-linux-gnu,
-     aarch64-macOS, x86_64-windows-msvc).
+  1. proves the tag commit is on `main`, verifies `Cargo.lock` with `--locked`,
+     and re-runs `just verify` and `just deps`,
+  2. creates a **draft** GitHub Release from the matching `CHANGELOG.md`
+     section,
+  3. builds the three target archives with SHA-256 checksums and builds/pushes
+     the `ghcr.io` image,
+  4. publishes the draft only after every artifact is ready.
 - A missing, duplicated, undated or empty changelog section **fails the
   release**. Fix: add or correct the section, delete and re-push the tag.
   Never hand-edit release notes on GitHub; the changelog is the source.
@@ -148,8 +155,9 @@ code-level.**
 - The review checks: tag name ↔ `Cargo.toml` version, `Cargo.lock` sync,
   exactly one dated `## [x.y.z] - YYYY-MM-DD` section with prose and an empty
   `[Unreleased]`, a clean working tree and an absent tag (local mode), plus an
-  advisory checklist. `release.yml` re-enforces the version and changelog
-  invariants remotely.
+  advisory checklist. `release.yml` re-enforces the version, changelog,
+  ancestry, lock and gate invariants remotely; a failed platform or image
+  leaves a draft, never a partial public release.
 - **Tag-push policy: no casual release pushes.** Commits are always allowed —
   the fast gates guard them and they trigger nothing public. Pushing a `v*`
   tag is a deliberate release act; **all** of the following must hold before
@@ -180,11 +188,11 @@ code-level.**
 ## 7. Deriving a new project from this template
 
 - Click **Use this template**, then follow the rename checklist in
-  docs/using-this-template.md. The three traps that break automation if
-  missed:
+  docs/using-this-template.md. The traps that break automation if missed:
   1. `Cargo.toml` — `name` / `repository`;
   2. `tests/cli.rs` — `env!("CARGO_BIN_EXE_rust-agents-template")`;
-  3. `.github/workflows/release.yml` — `bin: rust-agents-template`.
+  3. `.github/workflows/release.yml` — `bin: rust-agents-template`;
+  4. `Containerfile` — `COPY bin/${TARGETARCH}/rust-agents-template`.
 - After renaming: `just setup` → `just check` → first commit (the pre-commit
   gate runs automatically and `just check` is the safety net for anything
   missed).
@@ -195,20 +203,24 @@ code-level.**
 - commit → fast gates; push to a branch → heavy gates; **push of a `v*` tag →
   release review, then release (§5, deliberate)**; a docs-only commit or push
   takes the two-gate path (`githooks/docs-only`). PR or push to `main` → CI
-  classifies the change set and runs either `just check` or the docs gate; the
-  always-present `full check chain` job is the required check, so a docs-only
-  PR is not blocked by a missing context. Branch protection on `main` requires
-  that check, forbids force-pushes, and auto-deletes merged branches.
-- Formatting: `just fmt` auto-fixes; `just check` rehearses the whole chain
-  before committing.
+  classifies the change set: code runs the secret scan, `just verify`,
+  `just build-release`, `just deps`, macOS/Windows tests and workflow/hook
+  lint; docs run the secret scan and the docs gate. The always-present
+  `full check chain` job is the required check, so a docs-only PR is not
+  blocked by a missing context. Branch protection on `main` requires that
+  check, forbids force-pushes, and auto-deletes merged branches. A weekly
+  security workflow re-checks advisories without a push.
+- Formatting: `just fmt` auto-fixes; `just check` rehearses the local hooks
+  before committing; `just verify` runs the deterministic CI/release subset.
 - Dependencies: add or remove them only through cargo — `cargo add` (add
   `--dev` for dev-dependencies, `--package` in workspaces) and
   `cargo remove`. Never hand-edit the `[dependencies]` / `[dev-dependencies]`
   tables in `Cargo.toml`: `cargo add` resolves a compatible version
   requirement and updates `Cargo.lock` in the same step, avoiding
   hand-written specs that drift from the lock or trip the dependency gates.
-- Maintenance: Dependabot opens weekly updates for GitHub Actions and cargo
-  dependencies; they merge only with CI green.
+- Maintenance: Dependabot opens grouped weekly updates for GitHub Actions and
+  cargo dependencies; they merge only with CI green. `cargo outdated` is
+  advisory in the scheduled security workflow, not a blocking gate.
 - Security reports go through GitHub's private vulnerability reporting
   (SECURITY.md), never public issues.
 

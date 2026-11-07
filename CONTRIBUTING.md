@@ -7,7 +7,8 @@ make sure it stays green.
 
 ```bash
 just setup        # activate git hooks + install missing check tools
-just check        # run the full chain (same as CI)
+just check        # run the local hooks (pre-commit + pre-push)
+just verify       # run the deterministic CI/release gates (no network audit)
 ```
 
 ## Check gates
@@ -18,13 +19,17 @@ Details and the full gate tables: [docs/checks.md](docs/checks.md) (简体中文
 - **pre-commit (fast)**: `cargo fmt --check`, `cargo machete`, docs↔code
   alignment (`githooks/check-docs`), strict clippy; a docs-only change runs
   the secret scan and the docs gate only
-- **pre-push (heavy)**: `cargo audit`, `cargo deny check`, `cargo outdated`,
-  `cargo test`; a docs-only push runs the docs gate only
+- **pre-push (heavy)**: `cargo audit`, `cargo deny check`, `cargo test`; a
+  docs-only push runs the docs gate only; `cargo outdated` is advisory in the
+  scheduled security workflow
 - **pre-tag (release review)**: `githooks/pre-tag` checks tag↔version,
   `Cargo.lock`, the CHANGELOG section shape, the working tree and an advisory
   checklist; run it with `just tag-check`, create a tag with `just tag`
-- **CI**: the full chain via `just check` for code changes, the docs gate for
-  docs-only changes, both reported through the `full check chain` gate
+- **CI**: for code changes, `just verify`, `just build-release`, `just deps`,
+  the diff secret scan, macOS/Windows `cargo test --locked`, and
+  actionlint/shellcheck/check-docs self-test; for docs-only changes, the diff
+  secret scan and the docs gate. All paths report through the `full check
+  chain` gate.
 
 The full discipline — including when a lint waiver is acceptable — lives in
 [AGENTS.md](AGENTS.md). In short: fix code first; waivers are code-level,
@@ -45,8 +50,9 @@ mirror completeness and heading parity.
 Record user-visible changes in the current release section (`## [Unreleased]`,
 or the upcoming version's dated section while it is being prepared) in the
 same commit ([AGENTS.md](AGENTS.md) §9); internal refactors, tests and CI-only
-changes do not need an entry. `githooks/check-docs` validates the file skeleton, and the
-release review (`just tag-check`) validates the dated section before tagging.
+changes do not need an entry. `githooks/check-docs` validates the file skeleton,
+and the release review (`just tag-check`) validates the dated section before
+tagging.
 
 ## Pull requests
 

@@ -12,7 +12,9 @@ something the next session needs to know.
   changelog-driven releases, and agent-facing rules.
   Live: https://github.com/NIyueeE/rust-agents-template
 - Read order: AGENTS.md (rules) → this file (state) → docs/ (topic pages).
-- Local loop: `just setup` (once) → `just check` (full chain) → commit/push.
+- Local loop: `just setup` (once) → `just check` (local hooks) → commit/push.
+  CI/release use the context-free `just verify`, `just build-release` and
+  `just deps`.
 - Tests: `just test` (cargo-nextest when installed, otherwise `cargo test`).
 
 ## Current state (2026-11-07)
@@ -29,6 +31,10 @@ something the next session needs to know.
 - Mirror scope is explicit: `docs/*` and the README pair are bilingual;
   `AGENTS.md`, `HANDOFF.md`, `CONTRIBUTING.md`, `SECURITY.md` and
   `CHANGELOG.md` are English-only.
+- CI/CD overhaul landed: the diff-range secret scan, context-free CI gates
+  (`just verify` / `build-release` / `deps`), macOS/Windows tests,
+  actionlint/shellcheck/check-docs self-test, weekly security workflow, and a
+  draft-first release with SHA-256 checksums and a GHCR image.
 - Release state: **v0.1.0 is the released baseline**. **v0.2.0 is the prepared
   next release**: `Cargo.toml` / `Cargo.lock` are 0.2.0, `CHANGELOG.md` has a
   dated `## [0.2.0] - 2026-11-07` section with an empty `[Unreleased]`, and
@@ -80,6 +86,15 @@ something the next session needs to know.
   file skeleton on every commit, and `githooks/pre-tag` checks the dated
   release section at tag time. The "same commit" rule stays prose because
   "user-visible" is a judgement call; the PR template asks for it.
+- CI is context-free on purpose: `just check` invokes local hooks, so CI uses
+  `just verify` / `build-release` / `deps` and adds its own diff secret scan.
+  This keeps the secret scan from silently becoming a no-op in CI.
+- Releases are draft-first: a tag creates a draft; binaries, checksums and the
+  GHCR image are attached; a final `publish` job makes it public. A failed
+  platform or image leaves a draft.
+- `cargo outdated` moved out of the blocking chain: a new upstream release is
+  not a defect in this tree. It runs advisory in the scheduled security
+  workflow.
 
 ## Open threads
 
@@ -94,11 +109,17 @@ something the next session needs to know.
 - Consider tag-protection rulesets (restrict `v*` creation) if the repo gains
   collaborators.
 - Only the linux leg of `test-build.yml` has been exercised (see current
-  state).
+  state). The new macOS/Windows CI legs and the GHCR image job have not run on
+  GitHub yet; the first PR/tag will exercise them.
 - Branch protection on `main` must keep requiring the `full check chain`
   context; that name is now produced by the always-running `gate` job.
 - v0.2.0 is prepared, not tagged. Creating the tag is a deliberate human act
   (AGENTS.md §5); when asked, run `just tag` and push the tag.
+- The GHCR package is private on first push; make it public in package
+  settings if the image should be publicly pullable. The image is amd64-only;
+  arm64 is a documented extension, not implemented.
+- `dtolnay/rust-toolchain` is pinned to a branch-head commit (`# stable branch
+  head`), so it may need a manual bump rather than a Dependabot PR.
 - Next batches (not started): ownership/audience table (B4), `native_target`
   cfg (C2), profiles + `panic` lint (C4), HANDOFF archive rotation (C7).
 

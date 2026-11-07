@@ -3,7 +3,7 @@
 # A change limited to markdown, docs/ or assets/ cannot move the code gates, so
 # it runs only the two gates it CAN break (the secret scan and the
 # docs-alignment check) — the same split CI makes for the docs-only path.
-# Heavyweight gates (audit / deny / outdated / test) live in githooks/pre-push;
+# Heavyweight gates (audit / deny / test) live in githooks/pre-push;
 # the release review lives in githooks/pre-tag.
 # Activate via: git config core.hooksPath githooks   (or: just setup)
 set -euo pipefail

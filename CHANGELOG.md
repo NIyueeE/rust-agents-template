@@ -28,6 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Track `.agents/skills/` as the project-level skill root; a
   `<name>/SKILL.md` bundle added there is discovered by sessions in this
   repository.
+- CI now runs a diff-range secret scan, macOS/Windows `cargo test --locked`,
+  a release-profile build, actionlint, shellcheck and a `check-docs` self-test.
+- A scheduled security workflow re-checks advisories on an unchanged tree;
+  dependency freshness is advisory there rather than blocking a push.
+- Release publishes a draft first, attaches SHA-256 checksums, builds and
+  pushes a GHCR image from a scratch `Containerfile`, and only then publishes
+  the release. A failed platform or image leaves a draft.
 
 ### Changed
 
@@ -40,6 +47,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   section (`[Unreleased]`, or the upcoming version's dated section) on
   user-visible changes; internal refactors, tests and CI-only changes are
   exempt.
+- CI runs context-free `just verify`, `just build-release` and `just deps`
+  instead of the local hooks; the release preflight proves the tag is on
+  `main`, verifies the lockfile and re-runs those gates. Runner images are
+  pinned, jobs have timeouts and least-privilege permissions, and Dependabot
+  groups its updates.
+- `githooks/check-docs` now checks the CI, release, security and GHCR wiring,
+  and `githooks/check-secrets` accepts a commit range for CI.
 
 ## [0.1.0] - 2026-08-31
 

@@ -1,12 +1,11 @@
 name: CI
 
-# The workflow triggers on every PR and every push to main; the change set is
-# classified inside it by githooks/docs-only, the same script the local hooks
-# use. A docs-only change runs the docs gate and skips the Rust chain; any
-# other change runs the full chain (which includes the docs gate). Both paths
-# report through the single `full check chain` job below, so branch protection
-# has one required context that is always produced — workflow-level
-# paths-ignore would leave that context missing on docs-only PRs.
+# Every PR and every push to main is classified by githooks/docs-only, the
+# same script the local hooks use. The Rust chain is context-free (`just
+# verify` / `just deps` / `just build-release`), so CI does not inherit the
+# hooks' staged-diff or stdin assumptions. The diff secret scan is a CI step
+# of its own. All paths report through one always-present `full check chain`
+# gate, so branch protection has a required context even for docs-only changes.
 
 on:
   push:
@@ -22,12 +21,17 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   changes:
     name: classify change set
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
       docs_only: ${{ steps.classify.outputs.docs_only }}
+      range: ${{ steps.classify.outputs.range }}
     steps:
       # Full history: the classifier diffs the pushed/base commit against HEAD.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -41,20 +45,24 @@ jobs:
         run: |
           set -euo pipefail
           zeros="0000000000000000000000000000000000000000"
-          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "$zeros" ]; then
-            echo "docs_only=false" >> "$GITHUB_OUTPUT"
-            echo "no base commit to diff; running the full chain"
-            exit 0
+          head="$GITHUB_SHA"
+          if [ -z "${BASE_SHA:-}" ] || [ "$BASE_SHA" = "$zeros" ]; then
+            # A new branch has nothing to diff against: scan the whole commit.
+            base="4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+          else
+            base="$BASE_SHA"
           fi
+          range="$base..$head"
+          echo "range=$range" >> "$GITHUB_OUTPUT"
           changed="$(mktemp)"
-          if ! git diff --name-only "$BASE_SHA" "$GITHUB_SHA" > "$changed"; then
+          if ! git diff --name-only "$range" > "$changed"; then
             echo "docs_only=false" >> "$GITHUB_OUTPUT"
-            echo "cannot diff $BASE_SHA..$GITHUB_SHA; running the full chain"
+            echo "cannot diff $range; running the full chain"
             exit 0
           fi
           if githooks/docs-only < "$changed"; then
             echo "docs_only=true" >> "$GITHUB_OUTPUT"
-            echo "docs-only change: skipping the Rust chain, running the docs gate"
+            echo "docs-only change: skipping the Rust chain, running docs and lint"
           else
             echo "docs_only=false" >> "$GITHUB_OUTPUT"
             echo "change touches code: running the full chain"
@@ -64,40 +72,118 @@ jobs:
     name: rust gates
     needs: changes
     if: needs.changes.outputs.docs_only != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
-      # actions pinned to commit SHAs (supply-chain hardening); Dependabot
-      # tracks the "# vX" comments. See AGENTS.md.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The secret scan needs the base commit from the classified range.
+          fetch-depth: 0
 
-      # rust-toolchain.toml (channel = stable + clippy/rustfmt) resolves
-      # automatically; the pin freezes the action code, not the toolchain.
+      # rust-toolchain.toml (channel = stable) resolves the actual toolchain;
+      # the pin freezes the action code, not the toolchain.
       - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable branch head
+        with:
+          components: clippy,rustfmt
 
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
-      - name: Install check tools
+      - name: Install dependency tools
         uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2.90.1
         with:
-          tool: cargo-machete,cargo-audit,cargo-outdated,cargo-deny
+          tool: cargo-machete,cargo-audit,cargo-deny
 
       - name: Install just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
 
-      - name: Full check chain (fmt/secrets/machete/docs/clippy + audit/deny/outdated/test)
-        run: just check
+      - name: Secret scan (PR/push diff)
+        env:
+          RANGE: ${{ needs.changes.outputs.range }}
+        run: githooks/check-secrets "$RANGE"
+
+      - name: Deterministic gates (fmt/docs/clippy/test --locked)
+        run: just verify
+
+      - name: Build the release profile
+        run: just build-release
+
+      - name: Dependency policy (machete/audit/deny)
+        run: just deps
+
+  platform:
+    name: platform tests (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable branch head
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: ${{ matrix.os }}
+
+      - name: Run tests
+        run: cargo test --locked
 
   docs:
     name: docs alignment
     needs: changes
     if: needs.changes.outputs.docs_only == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Secret scan (docs diff)
+        env:
+          RANGE: ${{ needs.changes.outputs.range }}
+        run: githooks/check-secrets "$RANGE"
 
       # Pure git/grep/sed/awk: no toolchain, seconds to run.
       - name: Docs alignment (githooks/check-docs)
         run: githooks/check-docs
+
+  lint:
+    name: workflow and hook lint
+    needs: changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # check-docs self-test clones this checkout.
+          fetch-depth: 0
+
+      - name: Install actionlint
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" actionlint
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: actionlint
+        run: actionlint
+
+      - name: shellcheck
+        run: shellcheck -x githooks/* tests/check-docs.sh
+
+      - name: check-docs self-test
+        run: tests/check-docs.sh
 
   gate:
     # The single required context: branch protection on main requires
@@ -105,16 +191,19 @@ jobs:
     # paths above is skipped), so a docs-only PR cannot get stuck waiting for
     # a check that never appears.
     name: full check chain
-    needs: [changes, code, docs]
+    needs: [changes, code, platform, docs, lint]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - name: Require the chain for this change set
         env:
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
           CHANGES_RESULT: ${{ needs.changes.result }}
           CODE_RESULT: ${{ needs.code.result }}
+          PLATFORM_RESULT: ${{ needs.platform.result }}
           DOCS_RESULT: ${{ needs.docs.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
         run: |
           set -euo pipefail
           if [ "$CHANGES_RESULT" != "success" ]; then
@@ -125,16 +214,24 @@ jobs:
             echo "::error::the change-set classifier produced no docs_only result"
             exit 1
           fi
+          if [ "$LINT_RESULT" != "success" ]; then
+            echo "::error::workflow/hook lint did not succeed ($LINT_RESULT)"
+            exit 1
+          fi
           if [ "$DOCS_ONLY" = "true" ]; then
             if [ "$DOCS_RESULT" != "success" ]; then
               echo "::error::docs-only change: the docs alignment gate did not succeed ($DOCS_RESULT)"
               exit 1
             fi
-            echo "ok: docs-only change; docs alignment passed"
+            echo "ok: docs-only change; docs alignment and lint passed"
           else
             if [ "$CODE_RESULT" != "success" ]; then
               echo "::error::code change: the Rust chain did not succeed ($CODE_RESULT)"
               exit 1
             fi
-            echo "ok: code change; the full Rust chain passed"
+            if [ "$PLATFORM_RESULT" != "success" ]; then
+              echo "::error::code change: platform tests did not succeed ($PLATFORM_RESULT)"
+              exit 1
+            fi
+            echo "ok: code change; Rust chain, platform tests and lint passed"
           fi
