@@ -34,7 +34,11 @@ something the next session needs to know.
 - CI/CD overhaul landed: the diff-range secret scan, context-free CI gates
   (`just verify` / `build-release` / `deps`), macOS/Windows tests,
   actionlint/shellcheck/check-docs self-test, weekly security workflow, and a
-  draft-first release with SHA-256 checksums and a GHCR image.
+  draft-first release with SHA-256 checksums and a GHCR image. Main CI at
+  `17834fc` is green, including the macOS 26 and Windows 2022 test legs; the
+  manual security workflow is green. The GHCR image job needs a release tag
+  and has not run on GitHub; its musl build and scratch-image run were
+  verified locally with podman.
 - Release state: **v0.1.0 is the released baseline**. **v0.2.0 is the prepared
   next release**: `Cargo.toml` / `Cargo.lock` are 0.2.0, `CHANGELOG.md` has a
   dated `## [0.2.0] - 2026-11-07` section with an empty `[Unreleased]`, and
@@ -109,8 +113,9 @@ something the next session needs to know.
 - Consider tag-protection rulesets (restrict `v*` creation) if the repo gains
   collaborators.
 - Only the linux leg of `test-build.yml` has been exercised (see current
-  state). The new macOS/Windows CI legs and the GHCR image job have not run on
-  GitHub yet; the first PR/tag will exercise them.
+  state); the workflow itself was not re-dispatched after the pinned-runner
+  change. The macOS/Windows CI legs passed on `main`; the GHCR image job still
+  requires a release tag.
 - Branch protection on `main` must keep requiring the `full check chain`
   context; that name is now produced by the always-running `gate` job.
 - v0.2.0 is prepared, not tagged. Creating the tag is a deliberate human act
