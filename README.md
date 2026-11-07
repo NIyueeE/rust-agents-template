@@ -1,31 +1,29 @@
 # rust-agents-template
 
-> A Rust project template: strict lints, layered git hooks, cargo-deny, CI/CD.
+> A Rust project template with strict lints, layered git hooks, cargo-deny and CI/CD.
 
 [![CI](https://github.com/NIyueeE/rust-agents-template/actions/workflows/ci.yml/badge.svg)](https://github.com/NIyueeE/rust-agents-template/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
 
 [English](README.md) | [简体中文](README.zh.md)
 
-An opinionated, batteries-included starting point for new Rust binary projects —
-featuring a strict lint policy and an automated, layered check pipeline
-(pre-commit / pre-push / CI).
+A starting point for new Rust binary projects. It includes a strict lint policy
+and a layered check pipeline: pre-commit, pre-push and CI.
 
 ## Features
 
-- **Latest stable toolchain** — `rust-toolchain.toml` declares `channel = "stable"`,
-  so rustup always resolves the newest stable release on every machine, with
-  `clippy` and `rustfmt` bundled as required components.
-- **Strict lints** — `unsafe_code = "forbid"`, clippy `all` + `pedantic` at `deny`
-  (see [Lint policy](docs/lint-policy.md)).
-- **Layered check gates** — fast gates before every commit, heavyweight gates
-  before every push, and CI running the deterministic gates, a release-profile
-  build, macOS/Windows tests, a container-image smoke test, and workflow/hook
-  lint (see [Checks](docs/checks.md)).
-- **Reviewed, tag-driven releases** — `just tag` runs a local release review;
-  pushing a `v*` tag publishes a draft release, three-platform binaries
-  (static Linux) with checksums, and a GHCR image (see [Release](docs/release.md)).
-- **Rust 2024 edition**.
+- Latest stable toolchain: `rust-toolchain.toml` declares `channel = "stable"`,
+  so rustup resolves the newest stable release on each machine. `clippy` and
+  `rustfmt` are required components.
+- Strict lints: `unsafe_code = "forbid"`; clippy `all` and `pedantic` are
+  denied (see [Lint policy](docs/lint-policy.md)).
+- Layered check gates: pre-commit runs the fast checks, pre-push runs the heavy
+  checks, and CI adds the release build, macOS/Windows tests, an image smoke
+  test and workflow/hook lint (see [Checks](docs/checks.md)).
+- Reviewed, tag-driven releases: `just tag` runs a local release review.
+  Pushing a `v*` tag publishes a draft release with Linux, macOS and Windows
+  archives, SHA-256 files and a GHCR image (see [Release](docs/release.md)).
+- Rust 2024 edition.
 
 ## Quick start
 
@@ -53,7 +51,7 @@ just image
 | [docs/using-this-template.md](docs/using-this-template.md) | derive a new project: the rename checklist |
 | [docs/checks.md](docs/checks.md) | the gates, docs-only path, layered hooks, CI |
 | [docs/lint-policy.md](docs/lint-policy.md) | every lint and its level, waiver rules |
-| [docs/release.md](docs/release.md) | tag review → binaries (static Linux) + checksums + GHCR image |
+| [docs/release.md](docs/release.md) | tag review, then archives, checksums and GHCR image |
 | [docs/structure.md](docs/structure.md) | what every file in this repo is for |
 | [HANDOFF.md](HANDOFF.md) | agent handoff: current state, decisions, open threads |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | how to contribute |
@@ -66,7 +64,7 @@ is mirrored too. Repository meta files (`AGENTS.md`, `HANDOFF.md`,
 
 ## Contributing
 
-PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
+PRs are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

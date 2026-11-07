@@ -13,20 +13,21 @@ Declared in the `[lints]` table of `Cargo.toml`:
 | clippy `unwrap_used` / `expect_used` / `dbg_macro` | deny |
 | clippy `todo` | warn |
 
-The pre-commit hook additionally passes `-D warnings`, so every warning above —
-including `missing_docs` and `todo` — becomes a hard error at commit time.
+The pre-commit hook also passes `-D warnings`, so every warning above,
+including `missing_docs` and `todo`, becomes a hard error at commit time.
 
 ## Waivers
 
-**Fix code first; a waiver is the last resort, and only code-level.**
+Fix the code first. A waiver is a last resort and applies only in code.
 
 - Never "make errors disappear" by editing `[lints]`, the hooks, or CI.
-- Allowed relaxation: `#[expect(clippy::lint_name)]` (preferred — it starts
-  warning once the lint stops firing) or `#[allow(clippy::lint_name)]`, at
-  statement or single-function scope, with a one-line reason comment.
-- Never module-level `#![allow(...)]` or crate-level relaxation.
-- Legitimate scenarios only: (1) genuinely unavoidable usage, (2) upstream
-  false positives (macros, generated code, dependency audit noise).
+- Relax at statement or single-function scope, with a one-line reason comment.
+  Prefer `#[expect(clippy::lint_name)]`; it starts warning once the lint stops
+  firing, which prevents stale allowances. Fall back to
+  `#[allow(clippy::lint_name)]`.
+- Never use module-level `#![allow(...)]` or crate-level relaxation.
+- A waiver is legitimate only for genuinely unavoidable usage, or for upstream
+  false positives such as macros, generated code, or dependency audit noise.
 
 The same discipline applies to every other gate (machete, audit, deny,
 docs-sync, and anything added later). Full rules: [AGENTS.md](../AGENTS.md).

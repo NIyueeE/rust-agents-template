@@ -2,7 +2,7 @@
 
 > English | [简体中文](checks.zh.md)
 
-Checks are split by moment and weight:
+Checks run at five points:
 
 | Moment | Gate | Weight | What it guards |
 |--------|------|--------|----------------|
@@ -12,13 +12,13 @@ Checks are split by moment and weight:
 | every PR / main push | `ci.yml` | full | deterministic gates, release build, three-platform tests, image smoke test, workflow/hook lint |
 | weekly / manual | `security.yml` | audit | advisories and dependency policy on an unchanged tree |
 
-The local split is deliberate: pre-commit is the fast quality loop, pre-push
-is the heavyweight loop every branch push pays, and pre-tag is a light release
-readiness review. A tag-only push runs that review and stops there — the
-tagged commit's heavy gates ran when its branch was pushed, and re-running
-them on the tag would make the release depend on the local machine. The
-release workflow re-runs the deterministic gates and dependency policy from
-the tag's commit, so a release does not depend on a local hook having run.
+pre-commit is the fast quality loop; pre-push runs the heavy checks; pre-tag
+is a short release-readiness review. A tag-only push runs that review and
+stops. The tagged commit's heavy gates ran when its branch was pushed, and
+rerunning them on the tag would make the release depend on the local machine.
+The release workflow reruns the deterministic gates and dependency policy
+from the tag's commit, so a release does not depend on a local hook having
+run.
 
 `githooks/pre-tag` is not part of `just check`: it needs a release state (a
 dated changelog section, an empty `[Unreleased]`) and would fail on an
@@ -55,19 +55,19 @@ anything and take a two-gate path instead:
 | CI docs job | `githooks/check-secrets` (diff range), `githooks/check-docs` | Rust toolchain and tests |
 | CI lint job | `actionlint`, `shellcheck`, `tests/check-docs.sh` | nothing |
 
-Three properties make this safe rather than a bypass:
+The shortcut uses the actual change set. The hooks read the staged paths for a
+commit or the pushed range for a push, and `ci.yml` calls the same
+`githooks/docs-only` script, so the hooks and CI classify a change the same
+way.
 
-- the classifier reads the **actual change set** — the staged paths for a
-  commit, the pushed commit range for a push — and `ci.yml` calls the same
-  script, so the hooks and CI cannot disagree about what "docs-only" means;
-- the gates a docs-only change *can* still break always run: the secret scan
-  (a leaked key in a README is still a leaked key), the docs-alignment check,
-  and the workflow/hook lint;
-- anything ambiguous falls back to the full chain: an empty change set, a new
-  branch with no remote to diff against, a **tag push**, and a commit that
-  mixes docs with code paths.
+A docs-only change still runs the gates it can break: the secret scan, the
+docs-alignment check, and the workflow/hook lint.
 
-## On every commit — `githooks/pre-commit`
+Anything ambiguous takes the full chain: an empty change set, a new branch
+with no remote to diff against, a tag push, or a commit that mixes docs and
+code.
+
+## On every commit: `githooks/pre-commit`
 
 | # | Gate | Command | Purpose |
 |---|------|---------|---------|
@@ -85,7 +85,7 @@ A docs-only change runs gates 2 and 4 only.
 `[Unreleased]` section, the Keep a Changelog / Semantic Versioning header, and a
 date on every version section.
 
-## On every branch push — `githooks/pre-push`
+## On every branch push: `githooks/pre-push`
 
 | # | Gate | Command | Purpose |
 |---|------|---------|---------|
@@ -98,22 +98,22 @@ release review first; a tag-only push stops there. The freshness check is no
 longer a blocking gate: it is an advisory line in the scheduled security
 workflow, because a new upstream release is not a defect in this tree.
 
-## On every tag — `githooks/pre-tag`
+## On every tag: `githooks/pre-tag`
 
-`githooks/pre-tag` is the light release review, fired at two moments: `just tag`
-runs it before creating the tag locally, and `githooks/pre-push` runs it for
-every `v*` tag in a push (against the tag's commit, so re-pushing an old tag
-reviews that tag's state, not the working tree).
+`githooks/pre-tag` is a short release review. `just tag` runs it before
+creating the tag locally, and `githooks/pre-push` runs it for every `v*` tag
+in a push. The push path reviews the tag's commit, not the working tree, so
+re-pushing an old tag reviews that tag's state.
 
 | # | Check | Purpose |
 |---|-------|---------|
 | 9 | tag name ↔ `Cargo.toml` version; `Cargo.lock` in sync | release identity |
 | 10 | exactly one dated `## [x.y.z] - YYYY-MM-DD` section, with prose, and an empty `[Unreleased]` | release notes single source |
 | 11 | clean working tree and absent tag (local `just tag` only) | the tag is the release state |
-| 12 | advisory checklist: changelog audit, docs audit, gates green, deliberate release | human/agent review |
+| 12 | advisory checklist: changelog audit, docs audit, green gates, explicit release decision | human/agent review |
 
 A tag-only push stops after this review. The remote release workflow does not
-trust the local hook: it proves the tag commit is on `main`, re-runs the
+rely on the local hook: it proves the tag commit is on `main`, reruns the
 deterministic gates and dependency policy, and only then builds artifacts.
 
 ## CI: one required gate
@@ -138,8 +138,8 @@ appears. For the same reason the workflow does not use workflow-level
 
 `just check` is the local hook entry point (pre-commit + pre-push).
 `just verify` is the context-free subset CI and release preflight use: fmt,
-docs, clippy, and tests with the lockfile. It deliberately excludes the
-network-dependent audit and freshness gates.
+docs, clippy, and tests with the lockfile. It leaves out the network-dependent
+audit and freshness gates.
 
 ## Scheduled security
 
@@ -166,9 +166,9 @@ just tag                # release review + create the local annotated v* tag
 `just check` does not include the release review: it is meant for ordinary
 development commits. Other recipes: `just fmt` (auto-fix), `just test`.
 
-## When a gate blocks you
+## When a gate blocks a change
 
-Fix the code first. A waiver is the last resort: code-level only
-(`#[expect(...)]` preferred over `#[allow]`), minimal scope, with a reason
-comment. Never weaken `[lints]`, the hooks, or CI. See
+Fix the code first. A waiver is a last resort and applies only in code,
+preferably `#[expect(...)]` rather than `#[allow]`, at minimal scope, with a
+reason comment. Never weaken `[lints]`, the hooks, or CI. See
 [Lint policy](lint-policy.md) and [AGENTS.md](../AGENTS.md).

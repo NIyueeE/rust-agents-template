@@ -2,7 +2,7 @@
 
 > [English](checks.md) | 简体中文
 
-检查按运行时机与重量划分:
+检查在五个时机运行:
 
 | 时机 | 检查门 | 重量 | 守护什么 |
 |------|--------|------|----------|
@@ -12,11 +12,10 @@
 | 每次 PR / main 推送 | `ci.yml` | 全 | 确定性门、release 构建、三平台测试、镜像 smoke test、workflow/hook lint |
 | 每周 / 手动 | `security.yml` | 审计 | 代码未变时的安全通告与依赖策略 |
 
-本地分层是刻意的:pre-commit 是每次提交的快循环,pre-push 是每次分支推送都要
-付的重循环,pre-tag 是轻量的发布就绪审查。只推标签时,审查跑完就停——被标记的
-commit 的重门在它推分支时已经跑过,在标签上重跑会让发布依赖本地机器。远端
-release 流程不信任本地 hook:它证明标签的 commit 在 `main` 上,重跑确定性门与
-依赖策略,然后才构建产物。
+pre-commit 是每次提交的快循环;pre-push 运行重检查;pre-tag 是简短的发布
+就绪审查。只推标签时,审查跑完就停。被标记 commit 的重检查在它推分支时已经
+跑过,在标签上重跑会让发布依赖本地机器。远端 release 流程不依赖本地 hook:
+它证明标签的 commit 在 `main` 上,重跑确定性门与依赖策略,然后才构建产物。
 
 `githooks/pre-tag` 不属于 `just check`:它需要发布态(带日期的 changelog 小节、
 空的 `[Unreleased]`),在普通开发提交上必然失败。
@@ -50,17 +49,16 @@ CI 与 release 的镜像 job 会安装 `musl-tools`。
 | CI docs job | `githooks/check-secrets`(diff range)、`githooks/check-docs` | Rust 工具链与测试 |
 | CI lint job | `actionlint`、`shellcheck`、`tests/check-docs.sh` | 无 |
 
-三条性质让它安全,而不是绕过:
+这条快车道读取真实改动集。hook 读取暂存路径或推送的 commit 范围,`ci.yml`
+调用同一个 `githooks/docs-only` 脚本,所以 hook 与 CI 对一次改动的分类一致。
 
-- 分类器读的是**真实改动集**——提交时读暂存路径,推送时读推送的 commit 范围
-  ——并且 `ci.yml` 调用同一个脚本,所以 hook 与 CI 不可能对"仅文档"有不同
-  理解;
-- 仅文档改动**仍然可能**弄坏的门始终运行:密钥扫描(README 里泄漏的 key 仍然
-  是泄漏的 key)、文档对齐检查,以及 workflow/hook lint;
-- 任何有歧义的情况都回退到全链:空的改动集、没有远端可比的新分支、**标签
-  推送**,以及文档和代码混在一起的提交。
+仅文档改动仍会运行它可能弄坏的门:密钥扫描、文档对齐检查,以及
+workflow/hook lint。
 
-## 每次提交 —— `githooks/pre-commit`
+有歧义的情况一律走全链:空的改动集、没有远端可比的新分支、标签推送,以及
+文档和代码混在一起的提交。
+
+## 每次提交:`githooks/pre-commit`
 
 | # | 检查 | 命令 | 用途 |
 |---|------|------|------|
@@ -77,7 +75,7 @@ CI 与 release 的镜像 job 会安装 `musl-tools`。
 `githooks/check-docs` 还会校验 CHANGELOG 的骨架:恰好一个 `[Unreleased]`
 小节、Keep a Changelog / Semantic Versioning 头部、每个版本小节都带日期。
 
-## 每次分支推送 —— `githooks/pre-push`
+## 每次分支推送:`githooks/pre-push`
 
 | # | 检查 | 命令 | 用途 |
 |---|------|------|------|
@@ -89,11 +87,11 @@ CI 与 release 的镜像 job 会安装 `musl-tools`。
 为止。新鲜度检查不再阻塞:它变成定时安全流程里的一行建议,因为上游发布新
 版本不是本代码树的缺陷。
 
-## 每个发布标签 —— `githooks/pre-tag`
+## 每个发布标签:`githooks/pre-tag`
 
-`githooks/pre-tag` 是轻量发布审查,在两个时机触发:`just tag` 在本地创建标签
-前运行它,`githooks/pre-push` 对推送里的每个 `v*` 标签运行它(针对标签的
-commit,所以重推旧标签审查的是那个标签的状态,不是工作树)。
+`githooks/pre-tag` 是简短的发布审查。`just tag` 在本地创建标签前运行它,
+`githooks/pre-push` 对推送里的每个 `v*` 标签运行它。推送路径针对标签的
+commit,所以重推旧标签审查的是那个标签的状态,不是工作树。
 
 | # | 检查 | 用途 |
 |---|------|------|
@@ -102,8 +100,8 @@ commit,所以重推旧标签审查的是那个标签的状态,不是工作树)�
 | 11 | 工作树干净、标签不存在(仅本地 `just tag`) | 标签就是发布状态 |
 | 12 | 人工清单:changelog 审阅、docs 审阅、门全绿、发布是显式决定 | 人/agent 审阅 |
 
-只推标签时,审查完就停。远端 release 流程不信任本地 hook:它证明标签的 commit
-在 `main` 上,重跑确定性门与依赖策略,然后才构建产物。
+只推标签时,审查完就停。远端 release 流程不依赖本地 hook:它证明标签的
+commit 在 `main` 上,重跑确定性门与依赖策略,然后才构建产物。
 
 ## CI:一个必需的检查门
 
@@ -126,7 +124,7 @@ workflow 级 `paths-ignore`:必需的 context 必须在每个 PR 上存在。
 
 `just check` 是本地 hook 入口(pre-commit + pre-push)。`just verify` 是 CI 与
 release preflight 使用的、无 Git 上下文的子集:fmt、docs、clippy、带锁文件的
-测试。它刻意不包含依赖网络的审计与新鲜度门。
+测试。它不包含依赖网络的审计与新鲜度门。
 
 ## 定时安全
 
@@ -152,8 +150,8 @@ just tag                # 发布审查 + 创建本地 annotated v* 标签
 `just check` 不包含发布审查:它是给普通开发提交用的。其他 recipe:`just fmt`
 (自动修复)、`just test`。
 
-## 检查门拦住了你怎么办
+## 检查门拦住改动时
 
-先修代码。放行是最后手段:只能代码级局部放松(优先 `#[expect(...)]` 而非
-`#[allow]`)、最小作用域、附原因注释;禁止削弱 `[lints]`、hook 或 CI。
+先修代码。放行是最后手段,而且只作用于代码:优先 `#[expect(...)]` 而非
+`#[allow]`,范围尽量小,并附原因注释。禁止削弱 `[lints]`、hook 或 CI。
 详见 [Lint 策略](lint-policy.zh.md) 与 [AGENTS.md](../AGENTS.md)。

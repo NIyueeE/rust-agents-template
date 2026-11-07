@@ -56,6 +56,11 @@ something the next session needs to know.
   `v0.2.0` and `latest` at digest
   `sha256:7a358a9b55d4a3f092d8b919c2caed4ee120fcbbfc98173d6a82efe1bae00995`.
   The package is private (anonymous pull returns 403).
+- The `v0.2.0` tag points at `b2d273a`. The post-release docs commit
+  `7508ab8` and later documentation edits are on `main` but outside the tag.
+  That was a process miss: future releases should commit release-state docs
+  before tagging. Do not move a published tag without an explicit re-release
+  request.
 
 ## Previous state (2026-08-31)
 

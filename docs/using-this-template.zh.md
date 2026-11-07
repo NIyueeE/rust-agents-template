@@ -2,9 +2,8 @@
 
 > [English](using-this-template.md) | 简体中文
 
-点击 **Use this template** 之后,你的新仓库就已经自带严格 lint、分层 hook、
-CI 和发布流水线了。接下来把项目改成*你的*名字。下面是需要改动的全部文件;
-改完可以用 grep 兜底确认:
+点击 **Use this template** 后,新仓库已经自带严格 lint、分层 hook、CI 和发布
+流水线。接下来把项目改成你的名字。下表列出需要改动的全部文件。要查找残留:
 
 ```bash
 grep -rn "rust-agents-template" . --exclude-dir={.git,target}
@@ -15,7 +14,7 @@ grep -rn "rust-agents-template" . --exclude-dir={.git,target}
 | # | 文件 | 要改什么 |
 |---|------|----------|
 | 1 | `Cargo.toml` | `name`、`description`、`repository`;`version` 想重置就重置 |
-| 2 | `Cargo.lock` | 无需手动改 —— `cargo build` 会自动再生(也可以先删掉) |
+| 2 | `Cargo.lock` | 无需手动改:用 `cargo build` 重新生成(也可以先删掉) |
 | 3 | `tests/cli.rs` | `env!("CARGO_BIN_EXE_rust-agents-template")` → 新的二进制名 |
 | 4 | `.github/workflows/release.yml` | `bin: rust-agents-template` → 新的二进制名 |
 | 5 | `.github/workflows/test-build.yml` | 两处 `target/.../release/rust-agents-template[.exe]` 产物路径 → 新的二进制名 |
@@ -23,10 +22,10 @@ grep -rn "rust-agents-template" . --exclude-dir={.git,target}
 | 7 | `justfile` | 顶部注释(仅文案);`just image` 会自动读取包名 |
 | 8 | `README.md` / `README.zh.md` | 标题、徽章 URL、克隆 URL、简介文案 |
 | 9 | `LICENSE` / `LICENSE-MIT` / `LICENSE-APACHE` | 版权持有人与年份 |
-| 10 | `SECURITY.md`、`CONTRIBUTING.md`、`AGENTS.md` | 可选:调整联系方式 / 措辞 |
+| 10 | `SECURITY.md`、`CONTRIBUTING.md`、`AGENTS.md` | 可选:调整联系方式或措辞 |
 | 11 | `src/main.rs` | crate 级文档注释(missing_docs 强制) |
 
-**无需改动**的文件:`rust-toolchain.toml`、`deny.toml`、`githooks/*`、
+无需改动的文件:`rust-toolchain.toml`、`deny.toml`、`githooks/*`、
 `.editorconfig`、`docs/*`(均为相对链接)、`.github/dependabot.yml`。
 
 ## 改完之后
@@ -37,15 +36,14 @@ just check        # 全链检查 —— 会帮你抓出漏改的地方
 git add -A && git commit -m "chore: rename project"   # pre-commit 在此自动运行
 ```
 
-`just check` 是你的安全网:它会重新验证文档、hook、CI 与你刚改过的代码仍然
-一致。
+`just check` 会重新运行检查,抓出漏掉的名字。
 
-## 之后正常开发
+## 日常开发
 
-- 提交跑快门,推送跑重门(见 [检查](checks.zh.md))
-- 检查门拦住了你:先修代码 —— 放行只能代码级并留原因注释
+- 提交运行快检查,推送运行重检查(见 [检查](checks.zh.md))
+- 检查门拦住改动时,先修代码。放行只能作用于代码,并需要原因注释
   ([Lint 策略](lint-policy.zh.md))
-- 要发布二进制:先跑 `just tag`(本地发布审查 + 创建标签),再推送该
-  `v*` 标签([发布](release.zh.md))
+- 要发布二进制,先运行 `just tag` 做本地审查并创建标签,再推送 `v*` 标签
+  ([发布](release.zh.md))
 - GHCR 镜像名自动跟随仓库名;派生项目要公开发布时,在包的设置里把可见性
   改成 public

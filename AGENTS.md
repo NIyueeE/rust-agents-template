@@ -160,6 +160,10 @@ code-level.**
   advisory checklist. `release.yml` re-enforces the version, changelog,
   ancestry, lock and gate invariants remotely; a failed platform or image
   leaves a draft, never a partial public release.
+- **Tag the release state.** Create the tag on the commit that contains the
+  version, the changelog section and the release-state docs. A docs commit
+  pushed after the tag is outside that release. If a published tag is wrong,
+  treat the fix as a re-release and get explicit approval.
 - **Pre-releases are supported.** A SemVer tag with a prerelease suffix
   (`vX.Y.Z-rc.N`) is marked as a GitHub prerelease, is not marked "Latest",
   and does not move the GHCR `latest` tag; only its version tag is pushed.
