@@ -2,12 +2,11 @@
 
 > [English](release.md) | 简体中文
 
-已发布的基线是 `v0.1.0`;正在准备的下一个版本是 `v0.2.0`。
-发布 = 一次审查 + 一次标签推送:
+已发布的基线是 `v0.2.0`。发布下一个版本 = 一次审查 + 一次标签推送:
 
 ```bash
-just tag                 # 发布审查,然后创建本地 v0.2.0 标签
-git push origin v0.2.0   # 这才是真正的发布动作
+just tag                 # 发布审查,然后创建本地 vX.Y.Z 标签
+git push origin vX.Y.Z   # 这才是真正的发布动作
 ```
 
 `just tag` 从 `Cargo.toml` 读取版本,运行 `githooks/pre-tag`,只有审查通过才
@@ -87,6 +86,6 @@ Release 会保持 draft。
   `packages: write`;preflight job 只读。
 - 构建失败重跑:在 Actions 页面直接 re-run。`create-release` 会复用已有的
   draft,上传 action 会替换同名产物;已经公开的 release 不会被 re-run 修改。
-  如果 draft 已经不存在,再删除并重推标签(`git push origin :v0.2.0`)。
+  如果 draft 已经不存在,再删除并重推标签(`git push origin :vX.Y.Z`)。
   删除标签只允许用于修复失败的发布。
 - 要验证某个 commit 而不发布,用上面的测试构建;不要把发布标签当构建测试。

@@ -44,13 +44,18 @@ something the next session needs to know.
   longer release-only. The release review found and fixed four gaps: the
   publish job had no `GH_REPO`, upload builds were not `--locked`, the
   documented LTO/panic/strip release profile was missing from `Cargo.toml`,
-  and prerelease tags would have moved `latest`. The GHCR push and the full
-  draft/upload/publish chain still require a real release tag; the local musl
-  build and scratch-image run were verified with podman.
-- Release state: **v0.1.0 is the released baseline**. **v0.2.0 is the prepared
-  next release**: `Cargo.toml` / `Cargo.lock` are 0.2.0, `CHANGELOG.md` has a
-  dated `## [0.2.0] - 2026-11-07` section with an empty `[Unreleased]`, and
-  `just tag-check` passes for v0.2.0. The tag has not been created.
+  and prerelease tags would have moved `latest`. The v0.2.0 tag exercised the
+  full draft/upload/GHCR/publish chain end to end; see the release state below.
+- Release state: **v0.2.0 is the released baseline** — annotated tag `v0.2.0`
+  at `b2d273a`, release run `42380028565`, published as Latest. It has three
+  archives with matching SHA-256 sidecars: static Linux musl, macOS arm64 and
+  Windows msvc. `v0.1.0` is the previous release. The next release starts by
+  bumping `Cargo.toml` / `CHANGELOG.md` and running `just tag`.
+- v0.2.0 verification: all three checksums pass; the Linux binary is
+  `static-pie`, stripped, and prints `Hello, world!`; GHCR pushed both
+  `v0.2.0` and `latest` at digest
+  `sha256:7a358a9b55d4a3f092d8b919c2caed4ee120fcbbfc98173d6a82efe1bae00995`.
+  The package is private (anonymous pull returns 403).
 
 ## Previous state (2026-08-31)
 
@@ -133,15 +138,15 @@ something the next session needs to know.
   passed, including the static Linux musl build. Its `ref` input needs a
   **full** commit SHA, branch, or tag: an abbreviated SHA makes
   `actions/checkout` look for a branch of that name and fails; the docs now
-  say so. The GHCR image job still requires a release tag.
+  say so. The image push was exercised by the v0.2.0 release.
 - Branch protection on `main` must keep requiring the `full check chain`
   context; that name is now produced by the always-running `gate` job.
-- v0.2.0 is prepared, not tagged. Creating the tag is a deliberate human act
-  (AGENTS.md §5); when asked, run `just tag` and push the tag. Only that run
-  exercises draft creation, asset upload, GHCR push and the final publish.
-- The GHCR package is private on first push; make it public in package
-  settings if the image should be publicly pullable. The image is amd64-only;
-  arm64 is a documented extension, not implemented.
+- The next release is deliberate: bump `Cargo.toml` / `CHANGELOG.md`, run
+  `just tag`, and push the tag (AGENTS.md §5). The v0.2.0 release already
+  exercised draft creation, asset upload, GHCR push and the final publish.
+- The v0.2.0 GHCR package is private (anonymous pull returned 403); make it
+  public in package settings if the image should be publicly pullable. The
+  image is amd64-only; arm64 is a documented extension, not implemented.
 - `dtolnay/rust-toolchain` is pinned to a branch-head commit (`# stable branch
   head`), so it may need a manual bump rather than a Dependabot PR.
 - Next batches (not started): ownership/audience table (B4), `native_target`
