@@ -91,6 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tag.
 - Test-build documentation asks for a full commit SHA; an abbreviated SHA is
   not a valid checkout ref.
+- The release image job passes the release tag to `just image`, and the
+  attestation job retries while a draft release becomes available.
 
 ## [0.1.0] - 2026-08-31
 
