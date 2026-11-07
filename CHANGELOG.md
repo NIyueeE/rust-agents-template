@@ -33,7 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   date-aware matcher replaces the old first-match extractor.
 - The README gate count and mirror-scope claims were corrected; repository meta
   files are explicitly English-only, while every `docs/` page keeps a mirror.
-- The PR template and CONTRIBUTING ask for a `## [Unreleased]` entry on
+- The PR template and CONTRIBUTING ask for an entry in the current release
+  section (`[Unreleased]`, or the upcoming version's dated section) on
   user-visible changes; internal refactors, tests and CI-only changes are
   exempt.
 

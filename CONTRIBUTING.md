@@ -42,9 +42,10 @@ mirror completeness and heading parity.
 
 ## Changelog
 
-Record user-visible changes under `## [Unreleased]` in the same commit
-([AGENTS.md](AGENTS.md) §9); internal refactors, tests and CI-only changes do
-not need an entry. `githooks/check-docs` validates the file skeleton, and the
+Record user-visible changes in the current release section (`## [Unreleased]`,
+or the upcoming version's dated section while it is being prepared) in the
+same commit ([AGENTS.md](AGENTS.md) §9); internal refactors, tests and CI-only
+changes do not need an entry. `githooks/check-docs` validates the file skeleton, and the
 release review (`just tag-check`) validates the dated section before tagging.
 
 ## Pull requests

@@ -124,7 +124,9 @@ code-level.**
 - `CHANGELOG.md` is the **single source of release notes**, maintained in
   [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format and
   following [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-- During development, record notable changes under `## [Unreleased]`.
+- During development, record notable changes under `## [Unreleased]` — or in
+  the upcoming release's dated section once it exists and that release is
+  being prepared.
 - Before tagging, move that content into a dated section:
   `## [x.y.z] - YYYY-MM-DD` (the git tag is the same version with a `v`
   prefix, e.g. `v0.2.0`).
@@ -221,8 +223,10 @@ code-level.**
   to a branch.
 - **No drive-by dependency upgrades.** Upgrades are Dependabot's job (or a
   dedicated commit); never bundle them into feature work — keep bisect clean.
-- **CHANGELOG as you go.** A user-visible change and its `## [Unreleased]`
-  entry land in the same commit; never backfill at release time (§5).
+- **CHANGELOG as you go.** A user-visible change and its entry in the current
+  release section (`## [Unreleased]`, or the upcoming release's dated section
+  while it is being prepared) land in the same commit; never backfill at
+  release time (§5).
 - **Prove it, don't assume it.** Every "it works" claim must be backed by
   real command output from this session; no output, no claim.
 - **No corpses.** Commented-out code and `todo!()` stubs get removed, not
