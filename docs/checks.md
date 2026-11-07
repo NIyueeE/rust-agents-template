@@ -69,6 +69,10 @@ Lines that must carry a secret-shaped string (e.g. key-format documentation)
 take a `security-scan:allow` marker with a reason; `check-secrets` skips them.
 A docs-only change runs gates 2 and 4 only.
 
+`githooks/check-docs` also validates the CHANGELOG skeleton: exactly one
+`[Unreleased]` section, the Keep a Changelog / Semantic Versioning header, and a
+date on every version section.
+
 ## On every branch push — `githooks/pre-push`
 
 | # | Gate | Command | Purpose |

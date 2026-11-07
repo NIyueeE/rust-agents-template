@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `githooks/check-docs` now also checks the reverse direction (documented gates
   still exist), `just` recipe citations, bilingual mirror completeness, and
   heading-structure parity.
+- `githooks/check-docs` validates the CHANGELOG skeleton: exactly one
+  `[Unreleased]` section, the Keep a Changelog / Semantic Versioning header,
+  and a date on every version section.
 
 ### Changed
 
@@ -28,6 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   date-aware matcher replaces the old first-match extractor.
 - The README gate count and mirror-scope claims were corrected; repository meta
   files are explicitly English-only, while every `docs/` page keeps a mirror.
+- The PR template and CONTRIBUTING ask for a `## [Unreleased]` entry on
+  user-visible changes; internal refactors, tests and CI-only changes are
+  exempt.
 
 ## [0.1.0] - 2026-08-31
 

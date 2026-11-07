@@ -99,8 +99,8 @@ code-level.**
   pre-commit chain. It only covers greppable invariants (hook commands ↔
   docs/checks in both directions, lint names ↔ docs/lint-policy, edition,
   channel, just recipes cited by live pages, README docs index, mirror
-  completeness and heading parity, CI entry, CHANGELOG extraction, test-build
-  entry, secret-scan and pre-tag wiring).
+  completeness and heading parity, CI entry, CHANGELOG extraction and
+  skeleton, test-build entry, secret-scan and pre-tag wiring).
   **Semantic alignment** (outdated prose, runnable examples, consistent tone)
   cannot be mechanized — it stays with the agent or a human reviewer.
 

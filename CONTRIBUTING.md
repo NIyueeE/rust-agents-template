@@ -40,6 +40,13 @@ the affected pages **in both languages** in the same change.
 `githooks/check-docs` enforces the greppable parts automatically, including
 mirror completeness and heading parity.
 
+## Changelog
+
+Record user-visible changes under `## [Unreleased]` in the same commit
+([AGENTS.md](AGENTS.md) §9); internal refactors, tests and CI-only changes do
+not need an entry. `githooks/check-docs` validates the file skeleton, and the
+release review (`just tag-check`) validates the dated section before tagging.
+
 ## Pull requests
 
 - Keep CI green; a failing `full check chain` job blocks merge.

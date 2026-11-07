@@ -198,6 +198,26 @@ else
   errors=$((errors + 1))
 fi
 
+# 10b) CHANGELOG skeleton: the file keeps the shape the release gates rely on,
+#      so a broken heading is caught on an ordinary commit, not at tag time.
+expect "CHANGELOG title" CHANGELOG.md '# Changelog'
+expect "CHANGELOG keeps an Unreleased section" CHANGELOG.md '## [Unreleased]'
+expect "CHANGELOG follows Keep a Changelog" CHANGELOG.md 'Keep a Changelog'
+expect "CHANGELOG uses Semantic Versioning" CHANGELOG.md 'Semantic Versioning'
+unreleased_sections="$(grep -c '^## \[Unreleased\]' CHANGELOG.md || true)"
+if [ "${unreleased_sections:-0}" -eq 1 ]; then
+  echo "  ok    CHANGELOG has exactly one '## [Unreleased]' section"
+else
+  fail "CHANGELOG.md needs exactly one '## [Unreleased]' section, found ${unreleased_sections:-0}"
+fi
+bad_dates="$(grep -E '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' CHANGELOG.md \
+  | grep -vE ' - [0-9]{4}-[0-9]{2}-[0-9]{2}$' || true)"
+if [ -z "$bad_dates" ]; then
+  echo "  ok    every version section in CHANGELOG.md is dated"
+else
+  fail "CHANGELOG.md has a version section without a date: $bad_dates"
+fi
+
 # 11) CD test builds: manual dispatch only, never a release, documented
 if [ -f .github/workflows/test-build.yml ]; then
   expect "test builds are manual (workflow_dispatch)" .github/workflows/test-build.yml 'workflow_dispatch'

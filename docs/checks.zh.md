@@ -62,6 +62,9 @@ cargo install cargo-machete cargo-audit cargo-outdated cargo-deny --locked
 `security-scan:allow` 标记并注明原因;`check-secrets` 会跳过它。仅文档改动
 只运行第 2、4 道。
 
+`githooks/check-docs` 还会校验 CHANGELOG 的骨架:恰好一个 `[Unreleased]`
+小节、Keep a Changelog / Semantic Versioning 头部、每个版本小节都带日期。
+
 ## 每次分支推送 —— `githooks/pre-push`
 
 | # | 检查 | 命令 | 用途 |
