@@ -26,6 +26,7 @@
 | `SECURITY.md` | 漏洞报告政策 |
 | `LICENSE`(+ `LICENSE-MIT` / `LICENSE-APACHE`)| MIT OR Apache-2.0 |
 | `.editorconfig` | 跨编辑器基础格式约定 |
+| `.agents/skills/` | 项目级 skill 根目录:每个 `<name>/SKILL.md`(或 `<name>.md`)会被本仓库会话发现;`.gitkeep` 用于跟踪空目录 |
 | `docs/` | 模块化文档(本目录) |
 
 延伸阅读:[检查](checks.zh.md) · [Lint 策略](lint-policy.zh.md) · [发布](release.zh.md)

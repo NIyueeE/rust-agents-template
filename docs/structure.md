@@ -26,6 +26,7 @@
 | `SECURITY.md` | vulnerability reporting policy |
 | `LICENSE` (+ `LICENSE-MIT` / `LICENSE-APACHE`) | MIT OR Apache-2.0 |
 | `.editorconfig` | cross-editor formatting basics |
+| `.agents/skills/` | project-level skill root: each `<name>/SKILL.md` (or `<name>.md`) is discovered for sessions in this repo; `.gitkeep` keeps the empty directory tracked |
 | `docs/` | modular documentation (this directory) |
 
 See also: [Checks](checks.md) · [Lint policy](lint-policy.md) · [Release](release.md)

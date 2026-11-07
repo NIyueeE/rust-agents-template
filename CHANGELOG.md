@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `githooks/check-docs` validates the CHANGELOG skeleton: exactly one
   `[Unreleased]` section, the Keep a Changelog / Semantic Versioning header,
   and a date on every version section.
+- Track `.agents/skills/` as the project-level skill root; a
+  `<name>/SKILL.md` bundle added there is discovered by sessions in this
+  repository.
 
 ### Changed
 
