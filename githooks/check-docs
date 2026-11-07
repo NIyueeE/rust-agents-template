@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 # Docs-alignment check: verify the modular docs (docs/ + README landing pages)
 # still describe the actual code (hook commands, lints, toolchain, edition,
-# justfile, CI).
+# justfile recipes, mirrors, CI, release).
 # Covers greppable invariants only; semantic alignment stays with the agent/human.
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
 errors=0
+fail() {
+  echo "  FAIL  $*" >&2
+  errors=$((errors + 1))
+}
 
 expect() {
   # expect <description> <file> <fixed-string-pattern>
@@ -20,13 +24,45 @@ expect() {
   fi
 }
 
-# 1) every cargo command in every hook must be documented in the checks docs
-for hook in githooks/pre-commit githooks/pre-push; do
+# 1) every gate command a hook runs must be documented in the checks docs
+for hook in githooks/pre-commit githooks/pre-push githooks/pre-tag; do
+  if [ ! -f "$hook" ]; then
+    fail "$hook missing (see docs/checks.md)"
+    continue
+  fi
   while IFS= read -r cmd; do
     [ -n "$cmd" ] || continue
-    expect "[$hook] command documented: $cmd" docs/checks.md "$cmd"
-    expect "[$hook] command documented: $cmd" docs/checks.zh.md "$cmd"
-  done < <(grep -E '^cargo ' "$hook")
+    expect "[$hook] command documented in docs/checks.md: $cmd" docs/checks.md "$cmd"
+    expect "[$hook] command documented in docs/checks.zh.md: $cmd" docs/checks.zh.md "$cmd"
+  done < <(sed -e 's/[[:space:]]*#.*$//' "$hook" \
+             | grep -oE '(cargo [a-z-]+|githooks/[a-z-]+)' \
+             | sort -u)
+done
+
+# 1b) the reverse direction: every gate a checks page presents as a command
+#     must still exist in a hook. Without this a gate can be deleted while its
+#     documentation keeps claiming it runs.
+for doc in docs/checks.md docs/checks.zh.md; do
+  while IFS= read -r cmd; do
+    [ -n "$cmd" ] || continue
+    found=0
+    for hook in githooks/pre-commit githooks/pre-push githooks/pre-tag; do
+      if grep -qF -- "$cmd" "$hook" 2>/dev/null; then
+        found=1
+        break
+      fi
+    done
+    if [ "$found" -eq 1 ]; then
+      echo "  ok    $doc: documented gate still exists: $cmd"
+    else
+      fail "$doc documents a gate no hook runs: $cmd"
+    fi
+  done < <(awk '
+             /^## / { in_gate = ($0 ~ /pre-commit|pre-push|pre-tag/); next }
+             in_gate { print }
+           ' "$doc" \
+             | grep -oE '`(cargo [a-z-]+|githooks/[a-z-]+)[^`]*`' \
+             | tr -d '`' | sort -u)
 done
 
 # 2) every lint declared in Cargo.toml [lints] must be documented in the lint-policy docs
@@ -34,7 +70,12 @@ while IFS= read -r lint; do
   [ -n "$lint" ] || continue
   expect "lint documented: $lint" docs/lint-policy.md '`'"$lint"'`'
   expect "lint documented: $lint" docs/lint-policy.zh.md '`'"$lint"'`'
-done < <(awk '/^\[lints\./{f=1;next} /^\[/{f=0} f && /=/{split($0,a,"="); k=a[1]; gsub(/[ \t]/,"",k); if (k != "") print k}' Cargo.toml)
+done < <(awk '/^\[lints\./{f=1;next} /^\[/{f=0}
+              # comments are prose, not lint declarations: a `=` inside one
+              # (e.g. a code sample) is not a lint level
+              f && /=/ && $0 !~ /^[ \t]*#/ {
+                split($0,a,"="); k=a[1]; gsub(/[ \t]/,"",k); if (k != "") print k
+              }' Cargo.toml)
 
 # 3) rustc edition
 edition=$(sed -n 's/^edition = "\(.*\)"/\1/p' Cargo.toml)
@@ -56,6 +97,21 @@ expect "just setup documented" README.zh.md 'just setup'
 expect "just check documented" README.md 'just check'
 expect "just check documented" README.zh.md 'just check'
 
+# 5b) every backticked `just <recipe>` a live page cites must name a recipe the
+#     justfile defines. Backticks keep prose ("just the", "just a") out of the
+#     check, and the list comes from the justfile itself, so a rename that
+#     leaves a page behind fails here instead of dead-ending a reader.
+recipes=$(sed -n 's/^\([a-z][a-z0-9-]*\)\( .*\)\{0,1\}:.*/\1/p' justfile | sort -u)
+while IFS= read -r recipe; do
+  [ -n "$recipe" ] || continue
+  if printf '%s\n' "$recipes" | grep -qx -- "$recipe"; then
+    echo "  ok    just recipe exists: $recipe"
+  else
+    fail "a live page cites 'just $recipe', which the justfile does not define"
+  fi
+done < <(grep -rhoE '`just [a-z][a-z0-9-]*' README.md README.zh.md docs/*.md \
+           | sed 's/^`just //' | sort -u)
+
 # 6) hooks activation instruction
 expect "hooksPath instruction documented" README.md 'core.hooksPath githooks'
 expect "hooksPath instruction documented" README.zh.md 'core.hooksPath githooks'
@@ -64,11 +120,65 @@ expect "hooksPath instruction documented" README.zh.md 'core.hooksPath githooks'
 expect "docs gate documented" docs/checks.md 'githooks/check-docs'
 expect "docs gate documented" docs/checks.zh.md 'githooks/check-docs'
 
-# 8) READMEs must link the modular docs (index integrity, per language)
-for doc in using-this-template checks lint-policy release structure; do
-  expect "README links docs/$doc.md" README.md "docs/$doc.md"
-  expect "README links docs/$doc.zh.md" README.zh.md "docs/$doc.zh.md"
-done
+# 8) READMEs must link every modular docs page (index integrity, per language)
+while IFS= read -r page; do
+  name="$(basename "$page")"
+  case "$name" in
+    *.zh.md) continue ;;
+  esac
+  expect "README links docs/$name" README.md "docs/$name"
+  expect "README.zh links docs/${name%.md}.zh.md" README.zh.md "docs/${name%.md}.zh.md"
+done < <(git ls-files 'docs/*.md')
+
+# 8b) every page keeps a Chinese mirror, and the mirror keeps the same heading
+#     structure. Translated text differs, so the comparison is the level
+#     sequence, not the words: a section added to one language only is the
+#     usual way a mirror drifts.
+heading_levels() {
+  awk '
+    /^[[:space:]]*(```|~~~)/ { fence = !fence; next }
+    !fence && /^#+[[:space:]]/ { match($0, /^#+/); print RLENGTH }
+  ' "$1"
+}
+
+check_pair() {
+  local en="$1" zh="$2" en_levels zh_levels count
+  en_levels="$(heading_levels "$en")"
+  zh_levels="$(heading_levels "$zh")"
+  if [ "$en_levels" = "$zh_levels" ]; then
+    count="$(printf '%s\n' "$en_levels" | awk 'NF { n++ } END { print n+0 }')"
+    echo "  ok    $en and $zh have the same heading structure ($count headings)"
+  else
+    fail "$en and $zh have different heading structure — the mirror drifted"
+    printf '        en: %s\n' "$(printf '%s' "$en_levels" | tr '\n' ' ')" >&2
+    printf '        zh: %s\n' "$(printf '%s' "$zh_levels" | tr '\n' ' ')" >&2
+  fi
+}
+
+if [ -f README.md ] && [ -f README.zh.md ]; then
+  check_pair README.md README.zh.md
+else
+  fail "README.md / README.zh.md pair missing"
+fi
+
+while IFS= read -r page; do
+  case "$page" in
+    *.zh.md) continue ;;
+  esac
+  zh="${page%.md}.zh.md"
+  if [ ! -f "$zh" ]; then
+    fail "$page has no Chinese mirror ($zh)"
+  else
+    check_pair "$page" "$zh"
+  fi
+done < <(git ls-files 'docs/*.md')
+
+while IFS= read -r zh; do
+  base="${zh%.zh.md}.md"
+  if [ ! -f "$base" ]; then
+    fail "$zh has no base page ($base)"
+  fi
+done < <(git ls-files 'docs/*.zh.md')
 
 # 9) CI must run the same chain
 if [ -f .github/workflows/ci.yml ]; then
@@ -115,6 +225,17 @@ if [ -f githooks/check-secrets ]; then
   expect "secret scan documented" docs/checks.zh.md 'githooks/check-secrets'
 else
   echo "  FAIL  githooks/check-secrets missing (AGENTS.md §9 secrets discipline)" >&2
+  errors=$((errors + 1))
+fi
+
+# 14) pre-tag release review: wired into pre-push and documented
+if [ -f githooks/pre-tag ]; then
+  expect "pre-tag review wired" githooks/pre-push 'githooks/pre-tag'
+  expect "pre-tag documented" docs/checks.md 'githooks/pre-tag'
+  expect "pre-tag documented" docs/checks.zh.md 'githooks/pre-tag'
+  expect "pre-tag review in AGENTS.md" AGENTS.md 'githooks/pre-tag'
+else
+  echo "  FAIL  githooks/pre-tag missing (light release review, see AGENTS.md §5)" >&2
   errors=$((errors + 1))
 fi
 

@@ -36,6 +36,22 @@ test:
         cargo test
     fi
 
+# Run only the release review (githooks/pre-tag) without creating a tag.
+tag-check:
+    githooks/pre-tag
+
+# Release review + create the local annotated v* tag for Cargo.toml's version.
+# Pushing the tag is the deliberate release act — the review fires again inside
+# pre-push; see AGENTS.md §5 and docs/release.md.
+tag:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "$(git rev-parse --show-toplevel)"
+    version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -1)
+    githooks/pre-tag --tag "v${version}"
+    git tag -a "v${version}" -m "v${version}"
+    echo "tagged v${version} — push it deliberately: git push origin v${version}"
+
 # Run the full check chain (identical to hooks + CI: fmt/machete/docs/clippy + audit/deny/outdated/test).
 check:
     #!/usr/bin/env bash

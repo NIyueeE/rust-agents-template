@@ -45,4 +45,5 @@ still agree with the code you just renamed.
   [Checks](checks.md))
 - when a gate blocks you: fix the code first — waivers are code-level and need
   a reason ([Lint policy](lint-policy.md))
-- to ship binaries: push a `v*` tag ([Release](release.md))
+- to ship binaries: run `just tag` (local review + tag), then push the
+  `v*` tag ([Release](release.md))

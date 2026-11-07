@@ -20,8 +20,8 @@ featuring a strict lint policy and an automated, layered check pipeline
   (see [Lint policy](docs/lint-policy.md)).
 - **Layered check gates** — fast gates before every commit, heavyweight gates
   before every push, CI enforcing the same chain (see [Checks](docs/checks.md)).
-- **One-tag releases** — multi-platform binaries built on `v*` tags
-  (see [Release](docs/release.md)).
+- **Reviewed, tag-driven releases** — `just tag` runs a local release review;
+  pushing a `v*` tag builds multi-platform binaries (see [Release](docs/release.md)).
 - **Rust 2024 edition**.
 
 ## Quick start
@@ -44,16 +44,18 @@ just check
 | Document | Content |
 |----------|---------|
 | [docs/using-this-template.md](docs/using-this-template.md) | derive a new project: the rename checklist |
-| [docs/checks.md](docs/checks.md) | the eight gates, layered hooks, CI |
+| [docs/checks.md](docs/checks.md) | the gates, docs-only path, layered hooks, CI |
 | [docs/lint-policy.md](docs/lint-policy.md) | every lint and its level, waiver rules |
-| [docs/release.md](docs/release.md) | tagging → multi-platform binaries |
+| [docs/release.md](docs/release.md) | tag review → multi-platform binaries |
 | [docs/structure.md](docs/structure.md) | what every file in this repo is for |
 | [HANDOFF.md](HANDOFF.md) | agent handoff: current state, decisions, open threads |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | how to contribute |
 | [SECURITY.md](SECURITY.md) | reporting vulnerabilities |
 | [AGENTS.md](AGENTS.md) | rules for AI coding agents (and humans) |
 
-Each document has a `*.zh.md` 简体中文 counterpart.
+Every page under `docs/` has a `*.zh.md` 简体中文 counterpart; the README pair
+is mirrored too. Repository meta files (`AGENTS.md`, `HANDOFF.md`,
+`CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`) are English-only.
 
 ## Contributing
 

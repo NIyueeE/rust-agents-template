@@ -2,40 +2,64 @@
 
 > English | [简体中文](release.zh.md)
 
-Cutting a release is a single tag push:
+Cutting a release is a review plus a tag push:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+just tag                 # release review, then create the local v0.1.0 tag
+git push origin v0.1.0   # the deliberate release act
 ```
 
-`.github/workflows/release.yml` then creates the GitHub Release and builds the
-binary for three targets, attaching the archives to the release:
+`just tag` reads the version from `Cargo.toml`, runs `githooks/pre-tag`, and
+only creates the annotated tag when the review passes. If you create the tag by
+hand, `githooks/pre-push` still runs the review for every `v*` tag, and
+`.github/workflows/release.yml` re-checks the same invariants remotely.
 
-| Runner | Target |
-|--------|--------|
-| ubuntu-latest | x86_64-unknown-linux-gnu |
-| macos-latest | aarch64-apple-darwin |
-| windows-latest | x86_64-pc-windows-msvc |
+## Tag review
 
-Each archive contains the binary plus `LICENSE`, `LICENSE-MIT`,
-`LICENSE-APACHE`, and `README.md`.
+`githooks/pre-tag` is a light, seconds-fast review of the release state. It
+runs at two moments: before `just tag` creates the tag locally, and inside
+`githooks/pre-push` for every `v*` tag in a push. The push path reviews the
+tag's commit, not the working tree, so re-pushing an old tag reviews that
+tag's state. To run the review without creating a tag, use `just tag-check`.
+
+| Check | What it rejects |
+|-------|-----------------|
+| tag name ↔ `Cargo.toml` version; `Cargo.lock` in sync | a tag that names a version the code does not carry |
+| exactly one dated `## [x.y.z] - YYYY-MM-DD` section in `CHANGELOG.md`, with prose, and an empty `[Unreleased]` | a missing, duplicated, undated or empty section |
+| clean working tree and an absent tag (local `just tag` only) | a tag that would miss uncommitted state, or a tag that already exists |
+| advisory checklist | nothing mechanical — it is a human/agent audit of the changelog, docs and the `just check` result |
+
+A tag-only push stops after the review: the tagged commit's heavy gates ran
+when its branch was pushed, and re-running them on the tag would make the
+release depend on the local machine. If the tag's commit never went through a
+branch push, run `just check` on it first.
 
 ## Test builds (not releases)
 
 `.github/workflows/test-build.yml` builds **test artifacts** for chosen
 platforms from any commit — dispatch it from the Actions tab
-(**Test build → Run workflow**), pick a `ref` (commit SHA, branch, or tag)
-and `targets` (`linux`, `macos`, `windows`). Artifacts are ephemeral
-(7-day retention) and never published as a Release. Releases stay tag-driven.
+(**Test build → Run workflow**), pick a `ref` (commit SHA, branch, or tag) and
+`targets` (`linux`, `macos`, `windows`). Artifacts are ephemeral (7-day
+retention) and never published as a Release. Releases stay tag-driven.
 
 ## Notes
 
 - **Release notes come from `CHANGELOG.md`** (Keep a Changelog format): record
-  changes under `## [Unreleased]`, rename it to the version section before
-  tagging. The workflow fails if the tag's section is missing.
-- Keep `version` in `Cargo.toml` in sync with the tag before pushing it
-  (manually, or automate with a tool like release-plz).
+  changes under `## [Unreleased]`, then move that content into a dated
+  `## [x.y.z] - YYYY-MM-DD` section before tagging. The release fails unless
+  there is exactly one dated section with prose and `[Unreleased]` is empty.
+  A duplicated empty section is a known way to publish empty notes; the
+  uniqueness check exists for that defect.
+- **The tag and `Cargo.toml` must agree.** `githooks/pre-tag` checks it
+  locally and `release.yml` checks it again on the tag; the version in
+  `Cargo.toml` is the single source.
+- **The workflow re-enforces the changelog invariants.** A local tag created
+  with `git tag` instead of `just tag` is still reviewed on push, and a
+  missing or malformed section fails the release rather than publishing empty
+  notes.
 - The workflow needs `contents: write` — already declared in the file.
 - Re-running a failed build: delete and re-push the tag
   (`git push origin :v0.1.0`), or re-run the workflow from the Actions tab.
+  Deleting a tag is allowed only to fix a failed release.
+- Verify a commit without releasing with the test build above; never use a
+  release tag as a build test.

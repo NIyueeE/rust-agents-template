@@ -1,5 +1,13 @@
 name: Release
 
+# Tag-driven releases only (AGENTS.md §5): pushing a `v*` tag is the single
+# release trigger. The tag version must equal Cargo.toml's version and a
+# dated `## [x.y.z]` section must exist in CHANGELOG.md — the changelog is
+# the single source of release notes. A missing, duplicated or empty section
+# fails the release. The same invariants run locally in githooks/pre-tag;
+# this job re-enforces them on the tag's commit.
+# For verifying a commit without releasing, use test-build.yml instead.
+
 on:
   push:
     tags: ["v*"]
@@ -7,29 +15,88 @@ on:
 permissions:
   contents: write
 
+# A release is a deliberate, single act: two tag pushes (or a re-push while a
+# release is still running) must not race on the GitHub Release or its assets.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
+  check:
+    name: release checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify version matches Cargo.toml
+        run: |
+          set -euo pipefail
+          CARGO_VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$CARGO_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Mismatch: Cargo.toml version=$CARGO_VERSION, tag=$TAG_VERSION"
+            exit 1
+          fi
+          echo "ok: tag $GITHUB_REF_NAME matches Cargo.toml version $CARGO_VERSION"
+
+      - name: Verify CHANGELOG section (single source of release notes)
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          # The same invariants githooks/pre-tag enforces locally: *exactly one*
+          # dated `## [x.y.z] - YYYY-MM-DD` heading, a body that contains prose,
+          # and an empty `## [Unreleased]`. A laxer check here would let a
+          # hookless tag push ship an undated section — or, as one real defect
+          # did, publish a stray empty duplicate that the extractor picks first.
+          SECTIONS="$(grep -cE "^## \\[$VERSION\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md || true)"
+          if [ "$SECTIONS" -ne 1 ]; then
+            echo "::error::CHANGELOG.md needs exactly one dated '## [$VERSION] - YYYY-MM-DD' section (found $SECTIONS)."
+            exit 1
+          fi
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\] - [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$" {insec=1; next}
+            insec && /^## / {exit}
+            insec {print}
+          ' CHANGELOG.md > release-notes.md
+          if ! grep -qE '^[^#[:space:]]' release-notes.md; then
+            echo "::error::The '## [$VERSION]' section has no prose (headings only)."
+            exit 1
+          fi
+          if awk '/^## \[Unreleased\]/{f=1;next} f&&/^## /{exit} f{print}' CHANGELOG.md \
+              | grep -qE '^[^[:space:]]'; then
+            echo "::error::'## [Unreleased]' still has content; move it into the dated section before tagging."
+            exit 1
+          fi
+          echo "ok: one dated section with prose; [Unreleased] is empty"
+
   create-release:
     name: create release
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Release notes are extracted from CHANGELOG.md (Keep a Changelog format).
-      # The section for the pushed tag is mandatory; a missing or empty section
-      # fails the release. See AGENTS.md §5.
+      # The check job above has already proved the section is unique, dated and
+      # has prose; the extraction repeats the same date-aware matcher so the
+      # notes cannot come from a different section shape.
       - name: Create release with notes extracted from CHANGELOG.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           TAG="$GITHUB_REF_NAME"
           VERSION="${TAG#v}"
           awk -v ver="$VERSION" '
-            $0 ~ "^## \\[" ver "\\]" {insec=1; next}
+            $0 ~ "^## \\[" ver "\\] - [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$" {insec=1; next}
             insec && /^## / {exit}
             insec {print}
           ' CHANGELOG.md > release-notes.md
           if [ ! -s release-notes.md ]; then
-            echo "::error::CHANGELOG.md has no '## [$VERSION]' section. Add it (Keep a Changelog format) before tagging."
+            echo "::error::CHANGELOG.md has no dated '## [$VERSION] - YYYY-MM-DD' section. Add it before tagging."
             exit 1
           fi
           if gh release view "$TAG" >/dev/null 2>&1; then

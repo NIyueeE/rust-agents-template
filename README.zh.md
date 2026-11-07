@@ -19,8 +19,8 @@
   `deny`(见 [Lint 策略](docs/lint-policy.zh.md))。
 - **分层检查门** —— 快门在每次提交前运行,重门在每次推送前运行,CI 强制同一套
   链(见 [检查](docs/checks.zh.md))。
-- **一个标签即发布** —— 打 `v*` 标签自动构建多平台二进制(见
-  [发布](docs/release.zh.md))。
+- **先审查、再打标签的发布** —— `just tag` 先在本地跑发布审查;推送 `v*`
+  标签后构建多平台二进制(见 [发布](docs/release.zh.md))。
 - **Rust 2024 edition**。
 
 ## 快速开始
@@ -43,16 +43,18 @@ just check
 | 文档 | 内容 |
 |------|------|
 | [docs/using-this-template.zh.md](docs/using-this-template.zh.md) | 从本模板派生新项目:改名清单 |
-| [docs/checks.zh.md](docs/checks.zh.md) | 八道检查门、分层 hook、CI |
+| [docs/checks.zh.md](docs/checks.zh.md) | 检查门、仅文档路径、分层 hook、CI |
 | [docs/lint-policy.zh.md](docs/lint-policy.zh.md) | 每条 lint 与级别、放行规则 |
-| [docs/release.zh.md](docs/release.zh.md) | 打标签 → 多平台二进制发布 |
+| [docs/release.zh.md](docs/release.zh.md) | 标签审查 → 多平台二进制发布 |
 | [docs/structure.zh.md](docs/structure.zh.md) | 仓库里每个文件的用途 |
 | [HANDOFF.md](HANDOFF.md) | 交接文档:当前工作状态、决策与开放事项 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 如何参与贡献 |
 | [SECURITY.md](SECURITY.md) | 漏洞报告 |
 | [AGENTS.md](AGENTS.md) | AI 编码代理(以及人类)的守则 |
 
-每篇文档都有对应的 English 版本(同目录下去掉 `.zh` 后缀)。
+`docs/` 下每个页面都有对应的 English 版本(同目录下去掉 `.zh` 后缀),
+README 也是中英成对;仓库元文件(`AGENTS.md`、`HANDOFF.md`、`CONTRIBUTING.md`、
+`SECURITY.md`、`CHANGELOG.md`)只提供英文。
 
 ## 参与贡献
 

@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+# Pre-tag hook — light release review for a `v*` tag (AGENTS.md §5).
+#
+# git has no native tag hook, so this review fires at the two tag moments:
+#   1. `just tag` — locally, before the tag is created (default: HEAD)
+#   2. githooks/pre-push — automatically, when a `v*` tag is pushed
+#      (pre-push passes --tag and --commit of the tagged state)
+#
+# Scope is deliberately light: greppable release-state invariants plus an
+# advisory review checklist. Heavy gates (audit, deny, outdated, tests) stay
+# in pre-push and CI; release.yml re-enforces the version and changelog
+# invariants remotely. Nothing here replaces a human/agent review of the
+# CHANGELOG and the docs — see the checklist at the bottom.
+#
+# Usage:
+#   githooks/pre-tag [--tag vX.Y.Z] [--commit <sha>]
+#     --tag     tag name under review (default: v + Cargo.toml version)
+#     --commit  state under review (default: HEAD; pre-push passes the tag's
+#               commit, so re-pushing an old tag reviews that tag's state,
+#               not the working tree)
+# Exit code: 0 review passed; 1 mechanical violation; 2 usage error.
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+tag=""
+commit=""
+passed_commit=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --tag)
+      [ $# -ge 2 ] || { echo "pre-tag: --tag needs a value" >&2; exit 2; }
+      tag="$2"; shift 2 ;;
+    --commit)
+      [ $# -ge 2 ] || { echo "pre-tag: --commit needs a value" >&2; exit 2; }
+      commit="$2"; passed_commit=1; shift 2 ;;
+    *)
+      echo "pre-tag: unknown argument: $1" >&2
+      exit 2 ;;
+  esac
+done
+[ -n "$commit" ] || commit=HEAD
+
+# content of a path at the reviewed state ("" when absent)
+at() { git show "$commit:$1" 2>/dev/null || true; }
+
+errors=0
+fail() { echo "  FAIL  $*" >&2; errors=$((errors + 1)); }
+
+manifest="$(at Cargo.toml)"
+version="$(printf '%s\n' "$manifest" | sed -n 's/^version = "\([^"]*\)"/\1/p' | head -1)"
+package="$(printf '%s\n' "$manifest" | sed -n 's/^name = "\([^"]*\)"/\1/p' | head -1)"
+if [ -z "$version" ] || [ -z "$package" ]; then
+  echo "pre-tag: Cargo.toml at $commit has no package name/version" >&2
+  exit 1
+fi
+[ -n "$tag" ] || tag="v${version}"
+short="$(git rev-parse --short "$commit" 2>/dev/null || echo "$commit")"
+echo "==> release review: $tag ($short)"
+
+# --- version consistency ---------------------------------------------------
+echo "[version]"
+if [ "$tag" = "v${version}" ]; then
+  echo "  ok    tag name matches Cargo.toml version $version"
+else
+  fail "tag $tag does not match Cargo.toml version $version at $short"
+fi
+lock_version="$(at Cargo.lock | awk -v pkg="$package" '
+  $0 == "name = \"" pkg "\"" {f=1; next}
+  f && /^version = / {split($3, a, "\""); print a[2]; exit}')"
+if [ -n "$lock_version" ] && [ "$lock_version" = "$version" ]; then
+  echo "  ok    Cargo.lock in sync ($package $lock_version)"
+else
+  fail "Cargo.lock version '${lock_version:-missing}' != Cargo.toml $version"
+fi
+
+# --- changelog: single source of release notes -----------------------------
+# Three properties, because one weak check lets a real defect through: a
+# *duplicated* section (every extractor takes the first match, so a stray empty
+# copy in front of the real one publishes empty notes), a section that is
+# headings only, and an [Unreleased] section still holding the release's own
+# content.
+echo "[changelog]"
+sections="$(at CHANGELOG.md | grep -cE "^## \\[$version\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" || true)"
+prose="$(at CHANGELOG.md | awk -v ver="$version" '
+  $0 ~ "^## \\[" ver "\\] - [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$" {insec=1; next}
+  insec && /^## / {exit}
+  insec {print}' | grep -cE '^[^#[:space:]]' || true)"
+unreleased="$(at CHANGELOG.md | awk '
+  /^## \[Unreleased\]/ {insec=1; next}
+  insec && /^## / {exit}
+  insec {print}' | grep -cE '^[^[:space:]]' || true)"
+if [ "${sections:-0}" -ne 1 ]; then
+  fail "CHANGELOG.md needs exactly one dated '## [$version] - YYYY-MM-DD' section at $short, found ${sections:-0}"
+elif [ "${prose:-0}" -eq 0 ]; then
+  fail "the '## [$version]' section in CHANGELOG.md at $short has no prose — headings only"
+elif [ "${unreleased:-0}" -ne 0 ]; then
+  fail "'## [Unreleased]' still has content in CHANGELOG.md at $short — move it into the dated section before tagging"
+else
+  echo "  ok    exactly one dated '## [$version]' section, with prose; [Unreleased] is empty"
+fi
+
+# --- local-only: the tag is about to be created here ------------------------
+if [ "$passed_commit" -eq 0 ]; then
+  echo "[local tag]"
+  if [ -z "$(git status --porcelain)" ]; then
+    echo "  ok    working tree clean (HEAD is the release state)"
+  else
+    fail "working tree dirty — commit the release state first (the tag would miss it)"
+  fi
+  if git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null; then
+    fail "refs/tags/$tag already exists — delete it first (only to fix a failed release)"
+  else
+    echo "  ok    refs/tags/$tag does not exist yet"
+  fi
+fi
+
+# --- advisory checklist (human/agent audit; no mechanical gate can do this) -
+echo "[review checklist — verify each item, then push the tag]"
+cat <<'EOF'
+  [ ] CHANGELOG audit: the section for this version is accurate, complete and
+      user-visible (no internal-only noise); the user-facing docs it touches
+      are mirrored in the same change
+  [ ] Docs audit: version numbers, config examples and claims in README.md /
+      README.zh.md / docs/ still hold at this commit
+  [ ] Heavy gates green on this commit: 'just check' (pre-commit + pre-push);
+      CI runs the identical chain
+  [ ] Release is deliberate (AGENTS.md §5): explicit human request — pushing
+      the tag publishes the release directly
+EOF
+
+echo
+if [ "$errors" -eq 0 ]; then
+  echo "pre-tag review passed for $tag"
+else
+  echo "pre-tag review FAILED for $tag ($errors issue(s))" >&2
+  exit 1
+fi

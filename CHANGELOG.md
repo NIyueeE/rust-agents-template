@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A local release review (`githooks/pre-tag`, `just tag`, `just tag-check`):
+  tag↔`Cargo.toml` version, `Cargo.lock` sync, exactly one dated CHANGELOG
+  section with prose and an empty `[Unreleased]`, a clean tree and an absent
+  tag, plus an advisory checklist. `pre-push` runs it for every `v*` tag.
+- A docs-only path in the hooks and CI: `githooks/docs-only` classifies the
+  actual change set, so docs edits skip the Rust gates but still run the
+  secret scan and docs alignment. CI exposes one always-present
+  `full check chain` gate, so a docs-only PR cannot wait for a missing check.
+- `githooks/check-docs` now also checks the reverse direction (documented gates
+  still exist), `just` recipe citations, bilingual mirror completeness, and
+  heading-structure parity.
+
+### Changed
+
+- `release.yml` verifies the tag against `Cargo.toml` and requires exactly one
+  dated, non-empty CHANGELOG section with an empty `[Unreleased]`; the
+  date-aware matcher replaces the old first-match extractor.
+- The README gate count and mirror-scope claims were corrected; repository meta
+  files are explicitly English-only, while every `docs/` page keeps a mirror.
+
 ## [0.1.0] - 2026-08-31
 
 ### Added

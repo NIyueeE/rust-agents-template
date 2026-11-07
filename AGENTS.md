@@ -67,11 +67,13 @@ code-level.**
   docs-sync, and anything added later) follow the **same discipline**: fix if
   fixable; waive only as above when truly unfixable. Never delete, comment
   out, or bypass a check.
-- The chain has two layers: **fast gates** (`githooks/pre-commit`: fmt /
+- The chain has three moments: **fast gates** (`githooks/pre-commit`: fmt /
   secrets / machete / docs / clippy) run on commit, **heavy gates**
-  (`githooks/pre-push`: audit / deny / outdated / test) run on push; CI runs
-  the whole chain via `just check`. All three are "the checks" and bound by
-  this discipline.
+  (`githooks/pre-push`: audit / deny / outdated / test) run on push, and the
+  **release review** (`githooks/pre-tag`: tag↔version, changelog shape, clean
+  tree, advisory checklist) runs on a `v*` tag. CI runs the pre-commit +
+  pre-push chain via `just check`; the review is not part of `just check`.
+  All of them are "the checks" and bound by this discipline.
 
 ## 3. Before every commit: docs ↔ code alignment (every commit)
 
@@ -79,21 +81,26 @@ code-level.**
   - lint tables in docs/lint-policy.md / docs/lint-policy.zh.md ↔
     `[lints]` in `Cargo.toml`;
   - gate tables in docs/checks.md / docs/checks.zh.md ↔ the actual commands in
-    both hooks (`githooks/pre-commit` and `githooks/pre-push`);
+    the hooks (`githooks/pre-commit`, `githooks/pre-push` and
+    `githooks/pre-tag`);
   - README.md / README.zh.md as landing pages: quick-start commands, docs
     index links, and feature claims still hold;
   - toolchain description ↔ `rust-toolchain.toml`; layout ↔
     docs/structure(.zh).md; command examples; version numbers;
   - source doc comments (`//!` / `///`) ↔ actual behavior.
-- Docs are bilingual pairs (`*.md` + `*.zh.md`) and must change together;
-  never update one language only.
+- **Mirror scope.** Every page under `docs/` (`*.md` + `*.zh.md`) and the
+  README pair are bilingual and must change together; never update one
+  language only. Repository meta files (`AGENTS.md`, `HANDOFF.md`,
+  `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`) are English-only by
+  decision — do not create `*.zh.md` for them.
 - Changing lint config or the check chain requires syncing the affected docs
   pages, both READMEs, and this file **in the same commit**.
 - The mechanical part is automated in `githooks/check-docs`, wired into the
   pre-commit chain. It only covers greppable invariants (hook commands ↔
-  docs/checks, lint names ↔ docs/lint-policy, edition, channel, just recipes,
-  README docs index, CI entry, CHANGELOG extraction, test-build entry,
-  secret-scan gate).
+  docs/checks in both directions, lint names ↔ docs/lint-policy, edition,
+  channel, just recipes cited by live pages, README docs index, mirror
+  completeness and heading parity, CI entry, CHANGELOG extraction, test-build
+  entry, secret-scan and pre-tag wiring).
   **Semantic alignment** (outdated prose, runnable examples, consistent tone)
   cannot be mechanized — it stays with the agent or a human reviewer.
 
@@ -127,18 +134,31 @@ code-level.**
   2. creates the GitHub Release,
   3. builds and attaches archives for three targets (x86_64-linux-gnu,
      aarch64-macOS, x86_64-windows-msvc).
-- A missing or empty changelog section **fails the release**. Fix: add the
-  section, delete and re-push the tag. Never hand-edit release notes on
-  GitHub; the changelog is the source.
+- A missing, duplicated, undated or empty changelog section **fails the
+  release**. Fix: add or correct the section, delete and re-push the tag.
+  Never hand-edit release notes on GitHub; the changelog is the source.
+- **Run the review before creating a tag.** `just tag-check` runs
+  `githooks/pre-tag` without tagging; `just tag` runs it and creates the
+  annotated tag only after it passes. `githooks/pre-push` runs the same review
+  for every `v*` tag in a push, against the tag's commit. A tag-only push
+  stops after the review; the tagged commit's heavy gates ran on its branch
+  push, so run `just check` on the commit first if it never went through one.
+- The review checks: tag name ↔ `Cargo.toml` version, `Cargo.lock` sync,
+  exactly one dated `## [x.y.z] - YYYY-MM-DD` section with prose and an empty
+  `[Unreleased]`, a clean working tree and an absent tag (local mode), plus an
+  advisory checklist. `release.yml` re-enforces the version and changelog
+  invariants remotely.
 - **Tag-push policy: no casual release pushes.** Commits are always allowed —
   the fast gates guard them and they trigger nothing public. Pushing a `v*`
   tag is a deliberate release act; **all** of the following must hold before
   pushing one:
   1. an explicit human request (agents must never create release tags on
      their own initiative);
-  2. `version` in `Cargo.toml` equals the tag version;
-  3. a dated `## [x.y.z] - YYYY-MM-DD` section exists in `CHANGELOG.md`;
-  4. `just check` is green on the tagged commit.
+  2. `version` in `Cargo.toml` equals the tag version, and `Cargo.lock` is
+     in sync;
+  3. exactly one dated `## [x.y.z] - YYYY-MM-DD` section exists in
+     `CHANGELOG.md`, with prose, and `[Unreleased]` is empty;
+  4. `just check` is green on the tagged commit (and `just tag-check` passes).
   Re-tagging is allowed only to fix a failed release (delete the tag, fix,
   re-push). For verifying a commit without releasing, use CD test builds (§6).
 
@@ -171,9 +191,12 @@ code-level.**
 ## 8. Day-to-day operations
 
 - commit → fast gates; push to a branch → heavy gates; **push of a `v*` tag →
-  release (§5, deliberate)**; PR or push to `main` → CI runs the identical
-  chain; branch protection on `main` requires the `full check chain` check,
-  forbids force-pushes, and auto-deletes merged branches.
+  release review, then release (§5, deliberate)**; a docs-only commit or push
+  takes the two-gate path (`githooks/docs-only`). PR or push to `main` → CI
+  classifies the change set and runs either `just check` or the docs gate; the
+  always-present `full check chain` job is the required check, so a docs-only
+  PR is not blocked by a missing context. Branch protection on `main` requires
+  that check, forbids force-pushes, and auto-deletes merged branches.
 - Formatting: `just fmt` auto-fixes; `just check` rehearses the whole chain
   before committing.
 - Dependencies: add or remove them only through cargo — `cargo add` (add
@@ -228,7 +251,9 @@ code-level.**
 | What every file in this repo is for | docs/structure.md |
 | Current working state, decisions, open threads | HANDOFF.md |
 
-Every page has a `*.zh.md` counterpart; §3 governs their sync.
+Every page under `docs/` has a `*.zh.md` counterpart, and the README pair is
+mirrored; repository meta files (`AGENTS.md`, `HANDOFF.md`, `CONTRIBUTING.md`,
+`SECURITY.md`, `CHANGELOG.md`) are English-only. §3 governs the sync.
 
 ## 11. One-line summary
 

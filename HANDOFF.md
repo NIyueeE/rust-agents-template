@@ -15,7 +15,22 @@ something the next session needs to know.
 - Local loop: `just setup` (once) → `just check` (full chain) → commit/push.
 - Tests: `just test` (cargo-nextest when installed, otherwise `cargo test`).
 
-## Current state (2026-08-31)
+## Current state (2026-11-07)
+
+- First abstraction batch from molehill landed: `githooks/pre-tag` + `just tag`
+  / `just tag-check`, release-workflow version/changelog checks, a docs-only
+  path shared by the hooks and CI, and the strengthened `githooks/check-docs`
+  (reverse gate checks, recipe citations, mirror completeness and heading
+  parity).
+- CI now classifies the change set inside `ci.yml` with the same
+  `githooks/docs-only` script the hooks use. The required branch-protection
+  context is the always-present `full check chain` gate, not a job that
+  `paths-ignore` might suppress.
+- Mirror scope is explicit: `docs/*` and the README pair are bilingual;
+  `AGENTS.md`, `HANDOFF.md`, `CONTRIBUTING.md`, `SECURITY.md` and
+  `CHANGELOG.md` are English-only.
+
+## Previous state (2026-08-31)
 
 - **Template finalized** at user request: release history and tags were reset,
   and a clean baseline release `v0.1.0` was re-created to validate the whole
@@ -47,6 +62,17 @@ something the next session needs to know.
 - The README roadmap section was removed at user request; open items live in
   this file.
 
+- Release review is deliberately not part of `just check`: it needs a release
+  state (dated section, empty `[Unreleased]`) and would fail on ordinary
+  commits. A tag-only push runs the review and skips the heavy gates because
+  the tagged commit's heavy gates already ran on its branch push.
+- CI does not use workflow-level `paths-ignore`: the required `full check
+  chain` context must exist on docs-only PRs too. Job-level classification plus
+  an always-running gate solves that without weakening the required check.
+- Docs mirroring is scoped to `docs/` + the README pair. Mirroring agent state
+  (`HANDOFF.md`) or governance (`AGENTS.md`) would double the maintenance of
+  files that change every session.
+
 ## Open threads
 
 - MSRV (`rust-version`): deliberately undecided — it tensions with the
@@ -61,6 +87,10 @@ something the next session needs to know.
   collaborators.
 - Only the linux leg of `test-build.yml` has been exercised (see current
   state).
+- Branch protection on `main` must keep requiring the `full check chain`
+  context; that name is now produced by the always-running `gate` job.
+- Next batches (not started): ownership/audience table (B4), `native_target`
+  cfg (C2), profiles + `panic` lint (C4), HANDOFF archive rotation (C7).
 
 ## Gotchas
 

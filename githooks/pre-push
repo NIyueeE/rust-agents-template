@@ -1,10 +1,74 @@
 #!/usr/bin/env bash
-# Pre-push hook (heavyweight gates): audit + dependency policy + freshness + tests.
-# Fast gates live in githooks/pre-commit; CI runs the full chain via `just check`.
+# Pre-push hook (heavyweight gates + tag review dispatch): audit + dependency
+# policy + freshness + tests guard every branch push. A push carrying a `v*`
+# tag is a release act (AGENTS.md §5): the light release review
+# (githooks/pre-tag) runs for it, and a tag-only push stops there — the tagged
+# commit's heavy gates ran when its branch was pushed, and re-running them
+# would make the release depend on the local machine and its flakes.
+# A docs-only branch push skips the Rust gates and runs the docs check (the
+# same split githooks/pre-commit and CI make).
+# Fast gates live in githooks/pre-commit.
 # Activate via: git config core.hooksPath githooks   (or: just setup)
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
+
+# Consume the pushed refs from stdin before running anything; `v*` tag pushes
+# get the release review ahead of the heavy gates. Deletions are skipped.
+# (A manual run from a terminal reads nothing, like the hook always did.)
+pushed_any=0
+tag_pushed=0
+branch_pushed=0
+docs_only=1
+if [ ! -t 0 ]; then
+  zeros="0000000000000000000000000000000000000000"
+  while read -r local_ref local_sha remote_ref remote_sha; do
+    case "$local_ref" in
+      refs/tags/v*)
+        if [ "$local_sha" != "$zeros" ]; then
+          tag_pushed=1
+          echo "==> release tag pushed: $local_ref"
+          githooks/pre-tag --tag "${local_ref#refs/tags/}" --commit "$(git rev-parse --verify "$local_sha^{commit}")"
+        fi
+        ;;
+      *)
+        if [ "$local_sha" != "$zeros" ]; then
+          branch_pushed=1
+        fi
+        ;;
+    esac
+    # Classify the commits this push carries: a branch push whose commits only
+    # touch markdown, docs/ or assets/ cannot move audit/deny/outdated/test, so
+    # it runs the doc gate instead (the same split CI makes). A new branch has
+    # nothing to diff against and takes the full chain; a tag push never takes
+    # the shortcut.
+    if [ "$local_sha" != "$zeros" ] && [ "$remote_sha" != "$zeros" ]; then
+      pushed_any=1
+      git diff --name-only "$remote_sha" "$local_sha" | githooks/docs-only || docs_only=0
+    elif [ "$local_sha" != "$zeros" ]; then
+      pushed_any=1
+      docs_only=0
+    fi
+  done
+fi
+
+# A tag-only push is the release act: the review above is its gate, and the
+# tagged commit's heavy gates ran when its branch was pushed. Re-running them
+# here would make the release depend on the local machine and its flakes. If
+# the tag's commit never went through a branch push, run `just check` on it
+# first.
+if [ "$tag_pushed" -eq 1 ] && [ "$branch_pushed" -eq 0 ]; then
+  echo "==> tag-only push: release review passed; heavy gates already ran on the commit"
+  exit 0
+fi
+
+if [ "$pushed_any" -eq 1 ] && [ "$tag_pushed" -eq 0 ] && [ "$docs_only" -eq 1 ]; then
+  echo "==> docs-only push: skipping audit / deny / outdated / test"
+  echo "==> docs alignment (githooks/check-docs)"
+  githooks/check-docs
+  echo "pre-push checks passed (docs-only)"
+  exit 0
+fi
 
 echo "==> cargo audit (security advisories)"
 cargo audit

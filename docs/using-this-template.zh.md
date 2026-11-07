@@ -43,4 +43,5 @@ git add -A && git commit -m "chore: rename project"   # pre-commit 在此自动�
 - 提交跑快门,推送跑重门(见 [检查](checks.zh.md))
 - 检查门拦住了你:先修代码 —— 放行只能代码级并留原因注释
   ([Lint 策略](lint-policy.zh.md))
-- 要发布二进制:推一个 `v*` 标签([发布](release.zh.md))
+- 要发布二进制:先跑 `just tag`(本地发布审查 + 创建标签),再推送该
+  `v*` 标签([发布](release.zh.md))
