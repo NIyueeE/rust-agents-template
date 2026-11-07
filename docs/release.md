@@ -2,11 +2,12 @@
 
 > English | [简体中文](release.zh.md)
 
+The released baseline is `v0.1.0`; the prepared next release is `v0.2.0`.
 Cutting a release is a review plus a tag push:
 
 ```bash
-just tag                 # release review, then create the local v0.1.0 tag
-git push origin v0.1.0   # the deliberate release act
+just tag                 # release review, then create the local v0.2.0 tag
+git push origin v0.2.0   # the deliberate release act
 ```
 
 `just tag` reads the version from `Cargo.toml`, runs `githooks/pre-tag`, and
@@ -59,7 +60,7 @@ retention) and never published as a Release. Releases stay tag-driven.
   notes.
 - The workflow needs `contents: write` — already declared in the file.
 - Re-running a failed build: delete and re-push the tag
-  (`git push origin :v0.1.0`), or re-run the workflow from the Actions tab.
+  (`git push origin :v0.2.0`), or re-run the workflow from the Actions tab.
   Deleting a tag is allowed only to fix a failed release.
 - Verify a commit without releasing with the test build above; never use a
   release tag as a build test.

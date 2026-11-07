@@ -2,11 +2,12 @@
 
 > [English](release.md) | 简体中文
 
+已发布的基线是 `v0.1.0`;正在准备的下一个版本是 `v0.2.0`。
 发布 = 一次审查 + 一次标签推送:
 
 ```bash
-just tag                 # 发布审查,然后创建本地 v0.1.0 标签
-git push origin v0.1.0   # 这才是真正的发布动作
+just tag                 # 发布审查,然后创建本地 v0.2.0 标签
+git push origin v0.2.0   # 这才是真正的发布动作
 ```
 
 `just tag` 从 `Cargo.toml` 读取版本,运行 `githooks/pre-tag`,只有审查通过才
@@ -52,6 +53,6 @@ git push origin v0.1.0   # 这才是真正的发布动作
   本地标签,在推送时仍会被审查;缺失或形态不对的小节会让发布失败,而不是
   发布空说明。
 - 该工作流需要 `contents: write` 权限——文件里已声明。
-- 构建失败重跑:删除并重推标签(`git push origin :v0.1.0`),或在 Actions 页面
+- 构建失败重跑:删除并重推标签(`git push origin :v0.2.0`),或在 Actions 页面
   直接 re-run。删除标签只允许用于修复失败的发布。
 - 要验证某个 commit 而不发布,用上面的测试构建;不要把发布标签当构建测试。

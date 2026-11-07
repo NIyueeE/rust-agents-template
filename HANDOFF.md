@@ -29,6 +29,10 @@ something the next session needs to know.
 - Mirror scope is explicit: `docs/*` and the README pair are bilingual;
   `AGENTS.md`, `HANDOFF.md`, `CONTRIBUTING.md`, `SECURITY.md` and
   `CHANGELOG.md` are English-only.
+- Release state: **v0.1.0 is the released baseline**. **v0.2.0 is the prepared
+  next release**: `Cargo.toml` / `Cargo.lock` are 0.2.0, `CHANGELOG.md` has a
+  dated `## [0.2.0] - 2026-11-07` section with an empty `[Unreleased]`, and
+  `just tag-check` passes for v0.2.0. The tag has not been created.
 
 ## Previous state (2026-08-31)
 
@@ -72,6 +76,10 @@ something the next session needs to know.
 - Docs mirroring is scoped to `docs/` + the README pair. Mirroring agent state
   (`HANDOFF.md`) or governance (`AGENTS.md`) would double the maintenance of
   files that change every session.
+- The changelog has two mechanical layers: `githooks/check-docs` checks the
+  file skeleton on every commit, and `githooks/pre-tag` checks the dated
+  release section at tag time. The "same commit" rule stays prose because
+  "user-visible" is a judgement call; the PR template asks for it.
 
 ## Open threads
 
@@ -89,6 +97,8 @@ something the next session needs to know.
   state).
 - Branch protection on `main` must keep requiring the `full check chain`
   context; that name is now produced by the always-running `gate` job.
+- v0.2.0 is prepared, not tagged. Creating the tag is a deliberate human act
+  (AGENTS.md §5); when asked, run `just tag` and push the tag.
 - Next batches (not started): ownership/audience table (B4), `native_target`
   cfg (C2), profiles + `panic` lint (C4), HANDOFF archive rotation (C7).
 
