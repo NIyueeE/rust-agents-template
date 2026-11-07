@@ -35,9 +35,9 @@ something the next session needs to know.
   (`just verify` / `build-release` / `deps` / `image`), macOS/Windows tests,
   actionlint/shellcheck/check-docs self-test, weekly security workflow, and a
   draft-first release with SHA-256 checksums and a GHCR image. Main CI at
-  `658a75a` is green, including the new image smoke test and the macOS 26 /
+  `bb68c4e` is green, including the new image smoke test and the macOS 26 /
   Windows 2022 test legs; the manual security workflow is green. A full-SHA
-  `test-build.yml` dispatch at `658a75a` built the static Linux musl, macOS
+  `test-build.yml` dispatch at `851831e` built the static Linux musl, macOS
   arm64 and Windows msvc artifacts.
 - The image path is now exercised in CI (`just image` builds the static musl
   binary, the scratch image and smoke-tests it), so the Containerfile is no
@@ -129,7 +129,7 @@ something the next session needs to know.
   grows past ~10 tests.
 - Consider tag-protection rulesets (restrict `v*` creation) if the repo gains
   collaborators.
-- `test-build.yml` was re-dispatched at `658a75a` with all three targets and
+- `test-build.yml` was re-dispatched at `851831e` with all three targets and
   passed, including the static Linux musl build. Its `ref` input needs a
   **full** commit SHA, branch, or tag: an abbreviated SHA makes
   `actions/checkout` look for a branch of that name and fails; the docs now
