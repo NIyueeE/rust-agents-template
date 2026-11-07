@@ -7,26 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- Shared composite actions for Rust setup and the deterministic gates. CI,
-  release and test-build now use the same toolchain, cache, tool installation
-  and `just` commands.
-- A data-driven target matrix in `.github/targets.json`: static Linux
-  x86_64/arm64, macOS arm64/x86_64 and Windows x86_64. Release and test-build
-  plan their jobs from this file.
-- CycloneDX SBOM generation and GitHub build-provenance attestations for
-  release archives, checksums and the SBOM.
-- A protected `release` environment for the final publish job.
-
-### Changed
-
-- Release and test-build derive the binary name from `Cargo.toml`; the
-  Containerfile takes `BIN` as a build arg and `just image` passes it. The
-  rename checklist no longer edits workflow paths or the CLI test.
-- `tests/cli.rs` derives its binary environment variable from
-  `CARGO_PKG_NAME`.
-
 ## [0.2.0] - 2026-11-07
 
 ### Added
@@ -52,9 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a release-profile build, actionlint, shellcheck and a `check-docs` self-test.
 - A scheduled security workflow re-checks advisories on an unchanged tree;
   dependency freshness is advisory there rather than blocking a push.
-- Release publishes a draft first, attaches SHA-256 checksums, builds and
-  pushes a GHCR image from a scratch `Containerfile`, and only then publishes
-  the release. A failed platform or image leaves a draft.
+- Release publishes a draft first, attaches SHA-256 checksums, builds five
+  target archives, generates a CycloneDX SBOM and build attestations, builds
+  and pushes a GHCR image from a scratch `Containerfile`, and waits for the
+  protected release environment before publishing. A failed job leaves a
+  draft.
 - A tuned `[profile.release]`: thin LTO, one codegen unit, abort on panic and
   stripped symbols.
 - `just image` builds the static musl binary and the scratch GHCR image, then
@@ -63,6 +45,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pre-release tags (`vX.Y.Z-rc.N`) are supported: the GitHub release is
   marked prerelease, and neither GitHub's "Latest" nor the GHCR `latest` tag
   moves.
+- Shared composite actions for Rust setup and the deterministic gates. CI,
+  release, security and test-build use the same toolchain, cache, tool
+  installation and `just` commands.
+- A data-driven target matrix in `.github/targets.json`: static Linux
+  x86_64/arm64, macOS arm64/x86_64 and Windows x86_64. Release and test-build
+  plan their jobs from this file.
+- CycloneDX SBOM generation and GitHub build-provenance attestations for
+  release archives, checksums and the SBOM.
+- A protected `release` environment for the final publish job.
 
 ### Changed
 
@@ -86,6 +77,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the test-build Linux target matches the release target.
 - Draft releases are never marked latest; the publish job sets that marker
   only after all artifacts are ready.
+- Release and test-build derive the binary name from `Cargo.toml`; the
+  Containerfile takes `BIN` as a build arg and `just image` passes it. The
+  rename checklist no longer edits workflow paths or the CLI test.
+- `tests/cli.rs` derives its binary environment variable from
+  `CARGO_PKG_NAME`.
 
 ### Fixed
 

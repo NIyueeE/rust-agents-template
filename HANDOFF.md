@@ -46,28 +46,25 @@ something the next session needs to know.
   documented LTO/panic/strip release profile was missing from `Cargo.toml`,
   and prerelease tags would have moved `latest`. The v0.2.0 tag exercised the
   full draft/upload/GHCR/publish chain end to end; see the release state below.
-- Release state: **v0.2.0 is the released baseline** — annotated tag `v0.2.0`
-  at `b2d273a`, release run `42380028565`, published as Latest. It has three
-  archives with matching SHA-256 sidecars: static Linux musl, macOS arm64 and
-  Windows msvc. `v0.1.0` is the previous release. The next release starts by
-  bumping `Cargo.toml` / `CHANGELOG.md` and running `just tag`.
-- v0.2.0 verification: all three checksums pass; the Linux binary is
-  `static-pie`, stripped, and prints `Hello, world!`; GHCR pushed both
-  `v0.2.0` and `latest` at digest
-  `sha256:7a358a9b55d4a3f092d8b919c2caed4ee120fcbbfc98173d6a82efe1bae00995`.
-  The package is private (anonymous pull returns 403).
-- The `v0.2.0` tag points at `b2d273a`. The post-release docs commit
-  `7508ab8` and later documentation edits are on `main` but outside the tag.
-  That was a process miss: future releases should commit release-state docs
-  before tagging. Do not move a published tag without an explicit re-release
-  request.
+- Release state: **v0.2.0 is the released baseline**, re-cut from the final
+  release commit. It contains five target archives, SHA-256 sidecars, a
+  CycloneDX SBOM, build attestations and the GHCR image. The workflow run is
+  recorded in the Actions tab; `v0.1.0` is the previous release.
+- The first v0.2.0 cut (tag `b2d273a`, run `42380028565`) had three archives
+  and no SBOM. It was replaced by the re-cut so the tag includes the shared
+  CI/CD setup and release-state docs. The old commit remains in history; the
+  old tag and GitHub release were deleted.
+- The `v0.2.0` tag now points at the final release commit. There is no
+  post-release docs commit after it. The next release starts by bumping
+  `Cargo.toml` / `CHANGELOG.md`, then committing release-state docs before
+  `just tag`.
 - CI/CD extensibility work landed at `dd02b91`: CI run `42382695042`, the
   five-target test build `42382793393` (Linux x86_64/arm64, macOS
   arm64/x86_64, Windows x86_64) and the security run `42382868727` are green.
   It adds shared composite actions, `.github/targets.json`, CycloneDX SBOM
   plus build attestations, a protected `release` environment, and package-name
-  derivation from `Cargo.toml`. `v0.2.0` remains a three-archive release; the
-  next release is the first to use the five-target matrix.
+  derivation from `Cargo.toml`. The re-cut `v0.2.0` is the first release to
+  use the five-target matrix.
 
 ## Previous state (2026-08-31)
 
