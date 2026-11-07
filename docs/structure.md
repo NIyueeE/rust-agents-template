@@ -17,9 +17,12 @@
 | `githooks/docs-only` | change-set classifier: all docs paths → the two-gate path; CI calls the same script |
 | `githooks/check-docs` | docs ↔ code alignment gate: commands in both directions, lints, recipes, mirrors, CI/release wiring |
 | `githooks/check-secrets` | secret scan on staged changes, or on a commit range in CI |
-| `.github/workflows/ci.yml` | CI: classify; diff secret scan; `just verify` / `build-release` / `deps` / `image`; macOS/Windows tests; actionlint/shellcheck/check-docs self-test; always-present `full check chain` gate |
-| `.github/workflows/release.yml` | tag push (`v*`) → preflight (on `main`, version/changelog/lock, verify/deps) → draft release + static Linux/macOS/Windows binaries with checksums + GHCR image → publish |
-| `.github/workflows/test-build.yml` | manual per-commit test builds on pinned runners |
+| `.github/actions/rust-setup/action.yml` | composite setup: Rust toolchain, cache, cargo tools, optional `just` |
+| `.github/actions/rust-gates/action.yml` | composite gates: `just verify` / `build-release` / `deps` / `image` |
+| `.github/targets.json` | release and test-build target matrix: Linux x86_64/arm64, macOS arm64/x86_64, Windows x86_64 |
+| `.github/workflows/ci.yml` | CI: classify; diff secret scan; shared Rust gates; macOS/Windows tests; actionlint/shellcheck/check-docs self-test; always-present `full check chain` gate |
+| `.github/workflows/release.yml` | tag push (`v*`) → preflight → draft release + five archives/checksums + SBOM + attestations + GHCR image → protected publish |
+| `.github/workflows/test-build.yml` | manual per-commit test builds from the shared target config |
 | `.github/workflows/security.yml` | weekly/manual `cargo audit` + `cargo deny`; advisory `cargo outdated` |
 | `.github/dependabot.yml` | weekly grouped actions + cargo dependency updates |
 | `AGENTS.md` | rules for AI coding agents (and humans) |

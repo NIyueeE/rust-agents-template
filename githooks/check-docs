@@ -182,17 +182,23 @@ done < <(git ls-files 'docs/*.zh.md')
 
 # 9) CI runs the deterministic gates, platform tests and meta-lint
 if [ -f .github/workflows/ci.yml ]; then
-  expect "CI runs the deterministic gate chain" .github/workflows/ci.yml 'just verify'
-  expect "CI builds the release profile" .github/workflows/ci.yml 'just build-release'
-  expect "CI runs the dependency policy" .github/workflows/ci.yml 'just deps'
+  expect "CI uses the shared Rust setup" .github/workflows/ci.yml './.github/actions/rust-setup'
+  expect "CI uses the shared Rust gates" .github/workflows/ci.yml './.github/actions/rust-gates'
   expect "CI scans the diff for secrets" .github/workflows/ci.yml 'githooks/check-secrets'
   expect "CI runs the docs gate" .github/workflows/ci.yml 'githooks/check-docs'
   expect "CI runs platform tests" .github/workflows/ci.yml 'cargo test --locked'
   expect "CI lints workflows" .github/workflows/ci.yml 'actionlint'
   expect "CI lints hooks" .github/workflows/ci.yml 'shellcheck -x githooks/* tests/check-docs.sh'
   expect "CI self-tests the docs gate" .github/workflows/ci.yml 'tests/check-docs.sh'
-  expect "CI smoke-tests the GHCR image" .github/workflows/ci.yml 'just image'
-  expect "CI installs musl tools" .github/workflows/ci.yml 'musl-tools'
+  if [ -f .github/actions/rust-gates/action.yml ]; then
+    expect "Rust gates run the deterministic chain" .github/actions/rust-gates/action.yml 'just verify'
+    expect "Rust gates build the release profile" .github/actions/rust-gates/action.yml 'just build-release'
+    expect "Rust gates run the dependency policy" .github/actions/rust-gates/action.yml 'just deps'
+    expect "Rust gates smoke-test the image" .github/actions/rust-gates/action.yml 'just image'
+    expect "Rust gates install musl tools" .github/actions/rust-gates/action.yml 'musl-tools'
+  else
+    fail "shared Rust gates action missing"
+  fi
 else
   echo "  FAIL  .github/workflows/ci.yml missing (README badge references it)" >&2
   errors=$((errors + 1))
@@ -215,13 +221,25 @@ if [ -f Containerfile ]; then
   expect "release pushes a GHCR image" .github/workflows/release.yml 'ghcr.io'
   expect "image recipe smoke-tests the binary" justfile 'Hello, world!'
   expect "release builds with the lockfile" .github/workflows/release.yml 'locked: true'
-  expect "release uses the shared image recipe" .github/workflows/release.yml 'just image'
+  expect "release uses the shared image recipe" .github/workflows/release.yml './.github/actions/rust-gates'
   expect "release labels the image source" .github/workflows/release.yml 'SOURCE_URL'
   expect "release sets GH_REPO for gh" .github/workflows/release.yml 'GH_REPO'
   expect "release handles prereleases" .github/workflows/release.yml '--prerelease'
   expect "release marks the latest release" .github/workflows/release.yml '--latest'
   expect "release verifies the tag" .github/workflows/release.yml '--verify-tag'
-  expect "release builds a static Linux archive" .github/workflows/release.yml 'x86_64-unknown-linux-musl'
+  expect "release plans from the target config" .github/workflows/release.yml '.github/targets.json'
+  expect "release generates an SBOM" .github/workflows/release.yml 'cargo cyclonedx'
+  expect "release attests its assets" .github/workflows/release.yml 'attest-build-provenance'
+  expect "publish has a protected environment" .github/workflows/release.yml 'environment:'
+  expect "target config builds static Linux x86_64" .github/targets.json 'x86_64-unknown-linux-musl'
+  expect "target config builds static Linux arm64" .github/targets.json 'aarch64-unknown-linux-musl'
+  expect "target config builds Intel macOS" .github/targets.json 'x86_64-apple-darwin'
+  expect "release docs mention SBOM" docs/release.md 'SBOM'
+  expect "release docs mention SBOM (zh)" docs/release.zh.md 'SBOM'
+  expect "release docs mention attestation" docs/release.md 'attestation'
+  expect "release docs mention attestation (zh)" docs/release.zh.md 'attestation'
+  expect "release docs mention the release environment" docs/release.md 'release environment'
+  expect "release docs mention the release environment (zh)" docs/release.zh.md 'release environment'
   expect "release docs mention Containerfile" docs/release.md 'Containerfile'
   expect "release docs mention Containerfile (zh)" docs/release.zh.md 'Containerfile'
   expect "release docs mention GHCR" docs/release.md 'GHCR'
@@ -262,7 +280,8 @@ fi
 # 11) CD test builds: manual dispatch only, never a release, documented
 if [ -f .github/workflows/test-build.yml ]; then
   expect "test builds are manual (workflow_dispatch)" .github/workflows/test-build.yml 'workflow_dispatch'
-  expect "test builds use the static Linux target" .github/workflows/test-build.yml 'x86_64-unknown-linux-musl'
+  expect "test builds read the target config" .github/workflows/test-build.yml '.github/targets.json'
+  expect "test builds use the static Linux target" .github/targets.json 'x86_64-unknown-linux-musl'
   expect "test builds documented" docs/release.md 'test-build.yml'
   expect "test builds documented" docs/release.zh.md 'test-build.yml'
 else

@@ -98,6 +98,7 @@ image:
     cp "target/x86_64-unknown-linux-musl/release/${package}" bin/amd64/
 
     "$engine" build --build-arg TARGETARCH=amd64 \
+        --build-arg "BIN=${package}" \
         --build-arg "SOURCE_URL=${SOURCE_URL:-}" \
         -f Containerfile -t "$image" .
     "$engine" run --rm "$image" | grep -q 'Hello, world!'

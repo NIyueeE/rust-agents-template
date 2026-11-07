@@ -122,12 +122,16 @@ deterministic gates and dependency policy, and only then builds artifacts.
 the diff with `githooks/docs-only` and publishes the commit range. For code
 changes:
 
-- `rust gates` scans the range for secrets, runs `just verify`, builds the
-  release profile with `just build-release`, runs `just deps`, and
-  builds/smoke-tests the static musl GHCR image with `just image`;
+- `rust gates` scans the range for secrets, then runs `.github/actions/rust-gates`:
+  `just verify`, `just build-release`, `just deps`, and a static musl GHCR
+  image build with `just image`;
 - `platform tests` runs `cargo test --locked` on `macos-26` and `windows-2022`;
 - `lint` runs `actionlint`, `shellcheck -x githooks/* tests/check-docs.sh`, and
   the `check-docs` self-test.
+
+The Rust setup and gate steps are composite actions under `.github/actions/`.
+CI, release and test-build use the same setup path, so toolchain, cache and
+tool installation do not drift between workflows.
 
 For docs-only changes, `docs alignment` scans the range for secrets and runs
 `githooks/check-docs`; the `lint` job still runs. Every path reports through

@@ -21,8 +21,10 @@ and a layered check pipeline: pre-commit, pre-push and CI.
   checks, and CI adds the release build, macOS/Windows tests, an image smoke
   test and workflow/hook lint (see [Checks](docs/checks.md)).
 - Reviewed, tag-driven releases: `just tag` runs a local release review.
-  Pushing a `v*` tag publishes a draft release with Linux, macOS and Windows
-  archives, SHA-256 files and a GHCR image (see [Release](docs/release.md)).
+  Pushing a `v*` tag publishes a draft release with five archives
+  (Linux x86_64/arm64, macOS arm64/x86_64, Windows x86_64), SHA-256 files,
+  a CycloneDX SBOM, build attestations and a GHCR image
+  (see [Release](docs/release.md)).
 - Rust 2024 edition.
 
 ## Quick start

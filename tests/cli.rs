@@ -5,7 +5,7 @@ use std::process::Command;
 
 #[test]
 fn binary_greets_and_exits_successfully() -> Result<(), Box<dyn Error>> {
-    let output = Command::new(env!("CARGO_BIN_EXE_rust-agents-template")).output()?;
+    let output = Command::new(env!(concat!("CARGO_BIN_EXE_", env!("CARGO_PKG_NAME")))).output()?;
 
     assert!(output.status.success(), "binary exited with failure");
     assert_eq!(

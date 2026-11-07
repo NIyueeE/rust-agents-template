@@ -16,18 +16,20 @@ grep -rn "rust-agents-template" . --exclude-dir={.git,target}
 |---|------|----------------|
 | 1 | `Cargo.toml` | `name`, `description`, `repository`; reset `version` if you like |
 | 2 | `Cargo.lock` | no manual edit: regenerate with `cargo build` (or delete it first) |
-| 3 | `tests/cli.rs` | `env!("CARGO_BIN_EXE_rust-agents-template")` → your new binary name |
-| 4 | `.github/workflows/release.yml` | `bin: rust-agents-template` → your new binary name |
-| 5 | `.github/workflows/test-build.yml` | both `target/.../release/rust-agents-template[.exe]` artifact paths → your new binary name |
-| 6 | `Containerfile` | `COPY bin/${TARGETARCH}/rust-agents-template` → your new binary name |
-| 7 | `justfile` | top comment (cosmetic); `just image` derives the package name automatically |
-| 8 | `README.md` / `README.zh.md` | title, badge URLs, clone URL, intro text |
-| 9 | `LICENSE` / `LICENSE-MIT` / `LICENSE-APACHE` | copyright holder and year |
-| 10 | `SECURITY.md`, `CONTRIBUTING.md`, `AGENTS.md` | optional: adjust contact or wording |
-| 11 | `src/main.rs` | crate-level doc comment (missing_docs is enforced) |
+| 3 | `README.md` / `README.zh.md` | title, badge URLs, clone URL, intro text |
+| 4 | `LICENSE` / `LICENSE-MIT` / `LICENSE-APACHE` | copyright holder and year |
+| 5 | `SECURITY.md`, `CONTRIBUTING.md`, `AGENTS.md` | optional: adjust contact or wording |
+| 6 | `src/main.rs` | crate-level doc comment (missing_docs is enforced) |
+| 7 | `justfile` | top comment (cosmetic) |
+
+The binary name, release archive paths, test-build artifact paths and image
+build arg come from `Cargo.toml`. The `tests/cli.rs` binary env name uses
+`CARGO_PKG_NAME`. Those files need no edit.
 
 Files that need no change: `rust-toolchain.toml`, `deny.toml`, `githooks/*`,
-`.editorconfig`, `docs/*` (relative links), `.github/dependabot.yml`.
+`.editorconfig`, `docs/*` (relative links), `.github/dependabot.yml`,
+`.github/targets.json`, `tests/cli.rs`, `.github/workflows/release.yml`,
+`.github/workflows/test-build.yml`, `Containerfile`.
 
 ## After renaming
 

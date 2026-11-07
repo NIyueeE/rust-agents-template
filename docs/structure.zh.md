@@ -17,9 +17,12 @@
 | `githooks/docs-only` | 改动集分类器:全部是文档路径 → 两门路径;CI 调用同一个脚本 |
 | `githooks/check-docs` | 文档与代码对齐门:双向命令、lint、recipe、镜像、CI/发布接线 |
 | `githooks/check-secrets` | 暂存区密钥扫描,或在 CI 中扫描 commit range |
-| `.github/workflows/ci.yml` | CI:分类;diff 密钥扫描;`just verify` / `build-release` / `deps` / `image`;macOS/Windows 测试;actionlint/shellcheck/check-docs 自测;始终存在的 `full check chain` 门 |
-| `.github/workflows/release.yml` | 打 `v*` 标签 → preflight(在 `main`、版本/changelog/lock、verify/deps)→ draft release + 静态 Linux/macOS/Windows 二进制与校验和 + GHCR 镜像 → 发布 |
-| `.github/workflows/test-build.yml` | 在固定 runner 上手动为任意 commit 构建测试产物 |
+| `.github/actions/rust-setup/action.yml` | composite setup:Rust 工具链、缓存、cargo 工具、可选 `just` |
+| `.github/actions/rust-gates/action.yml` | composite gates:`just verify` / `build-release` / `deps` / `image` |
+| `.github/targets.json` | release 与 test-build 的目标矩阵:Linux x86_64/arm64、macOS arm64/x86_64、Windows x86_64 |
+| `.github/workflows/ci.yml` | CI:分类;diff 密钥扫描;共享 Rust gates;macOS/Windows 测试;actionlint/shellcheck/check-docs 自测;始终存在的 `full check chain` 门 |
+| `.github/workflows/release.yml` | 打 `v*` 标签 → preflight → draft release + 五份归档/校验和 + SBOM + attestations + GHCR 镜像 → 受保护的发布 |
+| `.github/workflows/test-build.yml` | 从共享目标配置手动为任意 commit 构建测试产物 |
 | `.github/workflows/security.yml` | 每周/手动 `cargo audit` + `cargo deny`;建议性 `cargo outdated` |
 | `.github/dependabot.yml` | 每周分组升级 actions + cargo 依赖 |
 | `AGENTS.md` | AI 编码代理(以及人类)的守则 |

@@ -2,3 +2,6 @@
 
 # release.yml stages the musl binary here for the GHCR image
 /bin/
+
+# release.yml generates the CycloneDX SBOM here
+/sbom.cdx.json

@@ -141,10 +141,17 @@ code-level.**
      and re-runs `just verify` and `just deps`,
   2. creates a **draft** GitHub Release from the matching `CHANGELOG.md`
      section,
-  3. builds the three target archives (static Linux musl, macOS arm64,
-     Windows msvc) with SHA-256 checksums, and builds/smoke-tests/pushes the
+  3. builds the five target archives (Linux x86_64/arm64 static musl, macOS
+     arm64/x86_64, Windows x86_64) with SHA-256 checksums, generates a
+     CycloneDX SBOM and build attestations, and builds/smoke-tests/pushes the
      `ghcr.io` image,
   4. publishes the draft only after every artifact is ready.
+- Release targets and the binary name are data, not workflow literals:
+  `.github/targets.json` holds the target matrix, and the release/test-build
+  plan jobs read the package name from `Cargo.toml`.
+- The `publish` job runs in the `release` environment. Configure required
+  reviewers on that environment to make a public release wait for approval;
+  the draft and all assets exist before the job starts.
 - A missing, duplicated, undated or empty changelog section **fails the
   release**. Fix: add or correct the section, delete and re-push the tag.
   Never hand-edit release notes on GitHub; the changelog is the source.
@@ -199,12 +206,11 @@ code-level.**
 ## 7. Deriving a new project from this template
 
 - Click **Use this template**, then follow the rename checklist in
-  docs/using-this-template.md. The traps that break automation if missed:
-  1. `Cargo.toml` — `name` / `repository`;
-  2. `tests/cli.rs` — `env!("CARGO_BIN_EXE_rust-agents-template")`;
-  3. `.github/workflows/release.yml` — `bin: rust-agents-template`;
-  4. `.github/workflows/test-build.yml` — both artifact paths;
-  5. `Containerfile` — `COPY bin/${TARGETARCH}/rust-agents-template`.
+  docs/using-this-template.md. The main trap is `Cargo.toml`: `name` drives the
+  binary, release archive names, test-build artifact paths and the image build
+  arg; `repository` drives the docs and links. `tests/cli.rs` derives its
+  binary env name from `CARGO_PKG_NAME`, and the release and test-build
+  workflows read the package name from `Cargo.toml`.
 - After renaming: `just setup` → `just check` → first commit (the pre-commit
   gate runs automatically and `just check` is the safety net for anything
   missed).
@@ -217,7 +223,9 @@ code-level.**
   takes the two-gate path (`githooks/docs-only`). PR or push to `main` → CI
   classifies the change set: code runs the secret scan, `just verify`,
   `just build-release`, `just deps`, `just image`, macOS/Windows tests and
-  workflow/hook lint; docs run the secret scan and the docs gate.
+  workflow/hook lint; docs run the secret scan and the docs gate. CI, release
+  and test-build share `.github/actions/rust-setup` and
+  `.github/actions/rust-gates`.
   The always-present `full check chain` job is the required check, so a
   docs-only PR is not blocked by a missing context. Branch protection on
   `main` requires that check, forbids force-pushes, and auto-deletes merged

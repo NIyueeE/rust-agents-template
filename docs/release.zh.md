@@ -17,6 +17,10 @@ git push origin vX.Y.Z   # 这才是真正的发布动作
 标签应指向包含最终发布状态的 commit。标签之后推送的文档 commit 不属于该
 release。
 
+发布目标写在 `.github/targets.json`:Linux x86_64 与 arm64(静态 musl)、
+macOS arm64 与 x86_64、Windows x86_64。二进制名来自 `Cargo.toml`;release
+与 test-build 工作流都从那里读取。
+
 ## 标签审查
 
 `githooks/pre-tag` 是对发布状态的短审查。它在 `just tag` 创建本地标签之前
@@ -85,7 +89,13 @@ Release 会保持 draft。
   本地标签,在推送时仍会被审查;缺失或形态不对的小节会让发布失败,而不是
   发布空说明。
 - 权限按 job 分配。发布 job 需要 `contents: write`;镜像 job 需要
-  `packages: write`;preflight job 只读。
+  `packages: write`;preflight job 只读。attestation job 需要
+  `id-token: write` 与 `attestations: write`。
+- SBOM job 用 CycloneDX 生成 `sbom.cdx.json`,并上传到 draft。attestation
+  job 下载全部发布产物,为归档、校验和与 SBOM 生成 GitHub build provenance。
+- `publish` job 在 release environment(名为 `release`)中运行。如果公开
+  release 需要人工批准,在该 environment 上配置 required reviewers;没有
+  保护时,构建完成后会直接发布。
 - 构建失败重跑:在 Actions 页面直接 re-run。`create-release` 会复用已有的
   draft,上传 action 会替换同名产物;已经公开的 release 不会被 re-run 修改。
   如果 draft 已经不存在,再删除并重推标签(`git push origin :vX.Y.Z`)。

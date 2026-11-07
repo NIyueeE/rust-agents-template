@@ -21,8 +21,9 @@ pre-commit、pre-push 与 CI。
   构建、macOS/Windows 测试、镜像 smoke test,以及 workflow/hook lint
   (见 [检查](docs/checks.zh.md))。
 - 先审查、再打标签的发布:`just tag` 在本地运行发布审查。推送 `v*` 标签后
-  发布 draft release,包含 Linux、macOS 与 Windows 归档、SHA-256 文件以及
-  GHCR 镜像(见 [发布](docs/release.zh.md))。
+  发布 draft release,包含五份归档(Linux x86_64/arm64、macOS
+  arm64/x86_64、Windows x86_64)、SHA-256 文件、CycloneDX SBOM、build
+  attestations 以及 GHCR 镜像(见 [发布](docs/release.zh.md))。
 - Rust 2024 edition。
 
 ## 快速开始

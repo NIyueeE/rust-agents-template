@@ -1,0 +1,46 @@
+name: Rust gates
+description: Run the shared deterministic, dependency and image gates.
+
+inputs:
+  verify:
+    description: Run just verify.
+    required: false
+    default: "false"
+  build-release:
+    description: Run just build-release.
+    required: false
+    default: "false"
+  deps:
+    description: Run just deps.
+    required: false
+    default: "false"
+  image:
+    description: Build and smoke-test the GHCR image with just image.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Deterministic gates
+      if: inputs.verify == 'true'
+      shell: bash
+      run: just verify
+
+    - name: Build the release profile
+      if: inputs.build-release == 'true'
+      shell: bash
+      run: just build-release
+
+    - name: Dependency policy
+      if: inputs.deps == 'true'
+      shell: bash
+      run: just deps
+
+    - name: Build and smoke-test the GHCR image
+      if: inputs.image == 'true'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y musl-tools
+        just image

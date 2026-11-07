@@ -4,9 +4,9 @@ name: Release
 # release trigger. The tag must name Cargo.toml's version, carry a dated
 # CHANGELOG section with prose, sit on main, and pass the deterministic gates
 # and dependency policy before anything is built. A draft release is created
-# first; the GitHub Release is published only after every binary, checksum and
-# the GHCR image are ready. A failed platform or image therefore leaves a
-# draft, never a partial public release.
+# first; the GitHub Release is published only after every binary, checksum,
+# SBOM, attestation and the GHCR image are ready. A failed platform or image
+# therefore leaves a draft, never a partial public release.
 
 on:
   push:
@@ -26,6 +26,32 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  plan:
+    name: plan release matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      bin: ${{ steps.plan.outputs.bin }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Plan binary and targets
+        id: plan
+        run: |
+          set -euo pipefail
+          bin="$(sed -n 's/^name = "\([^"]*\)"/\1/p' Cargo.toml | head -1)"
+          [ -n "$bin" ] || { echo "::error::Cargo.toml has no package name"; exit 1; }
+          matrix="$(jq -c '[.[] | select(.release == true)] | {include: .}' .github/targets.json)"
+          count="$(jq '.include | length' <<<"$matrix")"
+          if [ "$count" -eq 0 ]; then
+            echo "::error::.github/targets.json has no release targets"
+            exit 1
+          fi
+          echo "bin=$bin" >> "$GITHUB_OUTPUT"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "planned $count release target(s): $matrix"
+
   check:
     name: release checks
     runs-on: ubuntu-24.04
@@ -35,17 +61,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable branch head
+      - uses: ./.github/actions/rust-setup
         with:
           components: clippy,rustfmt
-
-      - name: Install dependency tools
-        uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2.90.1
-        with:
-          tool: cargo-machete,cargo-audit,cargo-deny
-
-      - name: Install just
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+          tools: cargo-machete,cargo-audit,cargo-deny
+          install-just: "true"
 
       - name: Verify the tag commit is on main
         run: |
@@ -72,11 +92,11 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
-          # The same invariants githooks/pre-tag enforces locally: *exactly one*
+          # The same invariants githooks/pre-tag enforces locally: exactly one
           # dated `## [x.y.z] - YYYY-MM-DD` heading, a body that contains prose,
           # and an empty `## [Unreleased]`. A laxer check here would let a
-          # hookless tag push ship an undated section — or, as one real defect
-          # did, publish a stray empty duplicate that the extractor picks first.
+          # hookless tag push ship an undated section, or publish a stray empty
+          # duplicate that the extractor picks first.
           SECTIONS="$(grep -cE "^## \\[$VERSION\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md || true)"
           if [ "$SECTIONS" -ne 1 ]; then
             echo "::error::CHANGELOG.md needs exactly one dated '## [$VERSION] - YYYY-MM-DD' section (found $SECTIONS)."
@@ -101,15 +121,14 @@ jobs:
       - name: Verify Cargo.lock is in sync
         run: cargo metadata --locked --format-version 1 > /dev/null
 
-      - name: Deterministic gates (fmt/docs/clippy/test --locked)
-        run: just verify
-
-      - name: Dependency policy (machete/audit/deny)
-        run: just deps
+      - uses: ./.github/actions/rust-gates
+        with:
+          verify: "true"
+          deps: "true"
 
   create-release:
     name: create draft release
-    needs: check
+    needs: [check, plan]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -159,8 +178,8 @@ jobs:
           fi
 
   upload:
-    name: build ${{ matrix.target }}
-    needs: create-release
+    name: build ${{ matrix.id }}
+    needs: [create-release, plan]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     permissions:
@@ -169,36 +188,23 @@ jobs:
       # A failing platform must not cancel the others: the release question is
       # whether every artifact builds, and a draft stays unpublished otherwise.
       fail-fast: false
-      matrix:
-        include:
-          # Static musl: the archive runs on older glibc distributions too.
-          - os: ubuntu-24.04
-            target: x86_64-unknown-linux-musl
-            musl: true
-          - os: macos-26
-            target: aarch64-apple-darwin
-            musl: false
-          - os: windows-2022
-            target: x86_64-pc-windows-msvc
-            musl: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # rust-toolchain.toml resolves the stable toolchain; the job adds the matrix target
-      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable branch head
+      - uses: ./.github/actions/rust-setup
         with:
           targets: ${{ matrix.target }}
+          cache-key: ${{ matrix.target }}
 
       - name: Install musl tools
         if: matrix.musl
         run: sudo apt-get update && sudo apt-get install -y musl-tools
 
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-
       - name: Build and upload release binary
         uses: taiki-e/upload-rust-binary-action@f0d45ae91ee7b8ee928de7a9d04d893a08bcbec6 # v1.30.2
         with:
-          bin: rust-agents-template
+          bin: ${{ needs.plan.outputs.bin }}
           target: ${{ matrix.target }}
           build-tool: cargo
           locked: true
@@ -206,6 +212,30 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           checksum: sha256
           include: LICENSE,LICENSE-MIT,LICENSE-APACHE,README.md,CHANGELOG.md
+
+  sbom:
+    name: generate SBOM
+    needs: create-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/rust-setup
+
+      - name: Install cargo-cyclonedx
+        run: cargo install cargo-cyclonedx --locked
+
+      - name: Generate CycloneDX SBOM
+        run: cargo cyclonedx --format json --override-filename sbom.cdx --spec-version 1.6
+
+      - name: Upload SBOM to the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release upload "$GITHUB_REF_NAME" sbom.cdx.json --clobber
 
   image:
     name: publish GHCR image
@@ -218,24 +248,16 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable branch head
+      - uses: ./.github/actions/rust-setup
         with:
           targets: x86_64-unknown-linux-musl
+          install-just: "true"
 
-      - name: Install musl tools
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
-
-      - name: Install just
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
-
-      - name: Build and smoke-test the image
+      - uses: ./.github/actions/rust-gates
+        with:
+          image: "true"
         env:
           SOURCE_URL: https://github.com/${{ github.repository }}
-        run: |
-          set -euo pipefail
-          IMAGE="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]'):$GITHUB_REF_NAME"
-          export IMAGE
-          just image
 
       - name: Push the image
         env:
@@ -252,13 +274,38 @@ jobs:
             echo "prerelease: GHCR latest tag left unchanged"
           fi
 
+  attest:
+    name: attest release assets
+    needs: [upload, sbom]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p dist
+          gh release download "$GITHUB_REF_NAME" --dir dist
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
+
   publish:
     name: publish release
-    needs: [create-release, upload, image]
+    needs: [create-release, upload, image, sbom, attest]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: write
+    environment:
+      name: release
+      url: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
     steps:
       - name: Publish the draft release
         env:

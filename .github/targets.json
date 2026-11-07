@@ -1,0 +1,47 @@
+[
+  {
+    "id": "linux-x86_64",
+    "group": "linux",
+    "os": "ubuntu-24.04",
+    "target": "x86_64-unknown-linux-musl",
+    "musl": true,
+    "release": true,
+    "test_build": true
+  },
+  {
+    "id": "linux-aarch64",
+    "group": "linux",
+    "os": "ubuntu-24.04-arm",
+    "target": "aarch64-unknown-linux-musl",
+    "musl": true,
+    "release": true,
+    "test_build": true
+  },
+  {
+    "id": "macos-aarch64",
+    "group": "macos",
+    "os": "macos-26",
+    "target": "aarch64-apple-darwin",
+    "musl": false,
+    "release": true,
+    "test_build": true
+  },
+  {
+    "id": "macos-x86_64",
+    "group": "macos",
+    "os": "macos-26",
+    "target": "x86_64-apple-darwin",
+    "musl": false,
+    "release": true,
+    "test_build": true
+  },
+  {
+    "id": "windows-x86_64",
+    "group": "windows",
+    "os": "windows-2022",
+    "target": "x86_64-pc-windows-msvc",
+    "musl": false,
+    "release": true,
+    "test_build": true
+  }
+]

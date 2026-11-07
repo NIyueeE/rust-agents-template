@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Shared composite actions for Rust setup and the deterministic gates. CI,
+  release and test-build now use the same toolchain, cache, tool installation
+  and `just` commands.
+- A data-driven target matrix in `.github/targets.json`: static Linux
+  x86_64/arm64, macOS arm64/x86_64 and Windows x86_64. Release and test-build
+  plan their jobs from this file.
+- CycloneDX SBOM generation and GitHub build-provenance attestations for
+  release archives, checksums and the SBOM.
+- A protected `release` environment for the final publish job.
+
+### Changed
+
+- Release and test-build derive the binary name from `Cargo.toml`; the
+  Containerfile takes `BIN` as a build arg and `just image` passes it. The
+  rename checklist no longer edits workflow paths or the CLI test.
+- `tests/cli.rs` derives its binary environment variable from
+  `CARGO_PKG_NAME`.
+
 ## [0.2.0] - 2026-11-07
 
 ### Added

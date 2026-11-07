@@ -18,6 +18,10 @@ by hand, `githooks/pre-push` still runs the review for every `v*` tag, and
 Create the tag on the commit that contains the final release state. A docs
 commit pushed after the tag is outside that release.
 
+Release targets live in `.github/targets.json`: Linux x86_64 and arm64 (static
+musl), macOS arm64 and x86_64, and Windows x86_64. The binary name comes from
+`Cargo.toml`; the release and test-build workflows read it there.
+
 ## Tag review
 
 `githooks/pre-tag` is a short review of the release state. It runs before
@@ -96,7 +100,15 @@ published as a Release. Releases stay tag-driven.
   `git tag` instead of `just tag` is still reviewed on push, and a missing or
   malformed section fails the release rather than publishing empty notes.
 - Permissions are per job. Release jobs need `contents: write`; the image job
-  needs `packages: write`; the preflight job only reads.
+  needs `packages: write`; the preflight job only reads. The attestation job
+  needs `id-token: write` and `attestations: write`.
+- The SBOM job generates `sbom.cdx.json` with CycloneDX and uploads it to the
+  draft. The attestation job downloads every release asset and creates GitHub
+  build provenance for the archives, checksums and SBOM.
+- The `publish` job runs in the release environment, named `release`.
+  Configure required reviewers on that environment if a public release should
+  wait for approval; without protection it publishes as soon as the build jobs
+  finish.
 - To retry a failed build, re-run the workflow from the Actions tab.
   `create-release` reuses the existing draft and the upload action replaces
   existing assets; a re-run does not modify a release that is already public.

@@ -108,13 +108,17 @@ commit 在 `main` 上,重跑确定性门与依赖策略,然后才构建产物。
 `ci.yml` 在每次 PR 和每次推送到 `main` 时运行。`changes` job 用
 `githooks/docs-only` 分类 diff 并发布 commit range。代码改动时:
 
-- `rust gates` 扫描 range 里的密钥,运行 `just verify`,用
-  `just build-release` 构建 release profile,运行 `just deps`,并用
-  `just image` 构建、smoke test 静态 musl GHCR 镜像;
+- `rust gates` 扫描 range 里的密钥,然后运行 `.github/actions/rust-gates`:
+  `just verify`、`just build-release`、`just deps`,并用 `just image` 构建
+  静态 musl GHCR 镜像;
 - `platform tests` 在 `macos-26` 和 `windows-2022` 上运行
   `cargo test --locked`;
 - `lint` 运行 `actionlint`、`shellcheck -x githooks/* tests/check-docs.sh` 和
   `check-docs` 自测。
+
+Rust setup 与 gate 步骤是 `.github/actions/` 下的 composite action。CI、
+release 和 test-build 共用同一条 setup 路径,工具链、缓存和工具安装不会在
+工作流之间漂移。
 
 仅文档改动时,`docs alignment` 扫描 range 里的密钥并运行
 `githooks/check-docs`;`lint` job 仍然运行。所有路径都通过始终运行的
