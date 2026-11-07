@@ -71,6 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a checkout in the workspace.
 - Prerelease tags no longer publish as stable or overwrite the GHCR `latest`
   tag.
+- Test-build documentation asks for a full commit SHA; an abbreviated SHA is
+  not a valid checkout ref.
 
 ## [0.1.0] - 2026-08-31
 

@@ -35,8 +35,10 @@ something the next session needs to know.
   (`just verify` / `build-release` / `deps` / `image`), macOS/Windows tests,
   actionlint/shellcheck/check-docs self-test, weekly security workflow, and a
   draft-first release with SHA-256 checksums and a GHCR image. Main CI at
-  `17834fc` is green, including the macOS 26 and Windows 2022 test legs; the
-  manual security workflow is green.
+  `658a75a` is green, including the new image smoke test and the macOS 26 /
+  Windows 2022 test legs; the manual security workflow is green. A full-SHA
+  `test-build.yml` dispatch at `658a75a` built the static Linux musl, macOS
+  arm64 and Windows msvc artifacts.
 - The image path is now exercised in CI (`just image` builds the static musl
   binary, the scratch image and smoke-tests it), so the Containerfile is no
   longer release-only. The release review found and fixed four gaps: the
@@ -127,10 +129,11 @@ something the next session needs to know.
   grows past ~10 tests.
 - Consider tag-protection rulesets (restrict `v*` creation) if the repo gains
   collaborators.
-- `test-build.yml` was re-dispatched after the pinned-runner change, but
-  before Linux moved to musl; re-dispatch after the next push to validate the
-  static Linux target. The macOS/Windows CI legs passed on `main`; the GHCR
-  image job still requires a release tag.
+- `test-build.yml` was re-dispatched at `658a75a` with all three targets and
+  passed, including the static Linux musl build. Its `ref` input needs a
+  **full** commit SHA, branch, or tag: an abbreviated SHA makes
+  `actions/checkout` look for a branch of that name and fails; the docs now
+  say so. The GHCR image job still requires a release tag.
 - Branch protection on `main` must keep requiring the `full check chain`
   context; that name is now produced by the always-running `gate` job.
 - v0.2.0 is prepared, not tagged. Creating the tag is a deliberate human act

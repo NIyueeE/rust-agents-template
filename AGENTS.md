@@ -183,7 +183,7 @@ code-level.**
 
 - `.github/workflows/test-build.yml` builds **test artifacts** from any
   commit without creating a release: dispatch it manually from the Actions
-  tab, choose a `ref` (commit SHA, branch, or tag) and `targets`
+  tab, choose a `ref` (full commit SHA, branch, or tag) and `targets`
   (`linux`, `macos`, `windows`).
 - Artifacts are ephemeral (7-day retention) and are never a Release — do not
   hand out release links for them, and do not reference them in the

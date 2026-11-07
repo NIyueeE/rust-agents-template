@@ -60,7 +60,7 @@ Release 会保持 draft。
 
 `.github/workflows/test-build.yml` 可以为任意 commit 构建指定平台的**测试
 产物**——在 Actions 页手动触发(**Test build → Run workflow**),选择 `ref`
-(commit SHA、分支或标签)和 `targets`(`linux`、`macos`、`windows`)。产物
+(完整 commit SHA、分支或标签)和 `targets`(`linux`、`macos`、`windows`)。产物
 仅保留 7 天,绝不会作为 Release 发布。发布永远由标签驱动。
 
 ## 注意事项

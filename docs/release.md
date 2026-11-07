@@ -65,8 +65,8 @@ published. If it fails, the GitHub Release stays a draft.
 
 `.github/workflows/test-build.yml` builds **test artifacts** for chosen
 platforms from any commit — dispatch it from the Actions tab
-(**Test build → Run workflow**), pick a `ref` (commit SHA, branch, or tag) and
-`targets` (`linux`, `macos`, `windows`). Artifacts are ephemeral (7-day
+(**Test build → Run workflow**), pick a `ref` (full commit SHA, branch, or
+tag) and `targets` (`linux`, `macos`, `windows`). Artifacts are ephemeral (7-day
 retention) and never published as a Release. Releases stay tag-driven.
 
 ## Notes
