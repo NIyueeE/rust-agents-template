@@ -105,8 +105,9 @@ code-level.**
   docs/checks in both directions, lint names ↔ docs/lint-policy, edition,
   channel, just recipes cited by live pages, README docs index, mirror
   completeness and heading parity, CI/release/security/GHCR wiring,
-  CHANGELOG extraction and skeleton, test-build entry, release profile,
-  image recipe, secret-scan and pre-tag wiring).
+  composite actions, target matrix, SBOM and attestation wiring, CHANGELOG
+  extraction and skeleton, test-build entry, release profile, image recipe,
+  secret-scan and pre-tag wiring).
   **Semantic alignment** (outdated prose, runnable examples, consistent tone)
   cannot be mechanized — it stays with the agent or a human reviewer.
 

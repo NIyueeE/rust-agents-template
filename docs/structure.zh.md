@@ -29,7 +29,7 @@
 | `CONTRIBUTING.md` | 贡献指南 |
 | `SECURITY.md` | 漏洞报告政策 |
 | `LICENSE`(+ `LICENSE-MIT` / `LICENSE-APACHE`)| MIT OR Apache-2.0 |
-| `Containerfile` | 从静态 musl 二进制构建 scratch 镜像,发布到 GHCR |
+| `Containerfile` | scratch 镜像;`BIN` build arg 由 `just image` 传入 |
 | `.dockerignore` | 镜像构建上下文:只含二进制和 `Containerfile` |
 | `tests/check-docs.sh` | 自测:坏掉的文档镜像必须失败 |
 | `.editorconfig` | 跨编辑器基础格式约定 |

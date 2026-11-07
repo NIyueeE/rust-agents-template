@@ -93,9 +93,9 @@ Release 会保持 draft。
   `id-token: write` 与 `attestations: write`。
 - SBOM job 用 CycloneDX 生成 `sbom.cdx.json`,并上传到 draft。attestation
   job 下载全部发布产物,为归档、校验和与 SBOM 生成 GitHub build provenance。
-- `publish` job 在 release environment(名为 `release`)中运行。如果公开
-  release 需要人工批准,在该 environment 上配置 required reviewers;没有
-  保护时,构建完成后会直接发布。
+- `publish` job 在 release environment(名为 `release`)中运行。该
+  environment 要求人工批准后才能公开 release;在仓库设置里调整 reviewer
+  列表。job 开始前,draft 与所有产物已经就绪。
 - 构建失败重跑:在 Actions 页面直接 re-run。`create-release` 会复用已有的
   draft,上传 action 会替换同名产物;已经公开的 release 不会被 re-run 修改。
   如果 draft 已经不存在,再删除并重推标签(`git push origin :vX.Y.Z`)。

@@ -29,7 +29,7 @@
 | `CONTRIBUTING.md` | how to contribute |
 | `SECURITY.md` | vulnerability reporting policy |
 | `LICENSE` (+ `LICENSE-MIT` / `LICENSE-APACHE`) | MIT OR Apache-2.0 |
-| `Containerfile` | scratch image from the static musl binary, published to GHCR |
+| `Containerfile` | scratch image; the `BIN` build arg comes from `just image` |
 | `.dockerignore` | image build context: only the binary and `Containerfile` |
 | `tests/check-docs.sh` | self-test: a broken docs mirror must fail |
 | `.editorconfig` | cross-editor formatting basics |

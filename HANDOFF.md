@@ -61,12 +61,13 @@ something the next session needs to know.
   That was a process miss: future releases should commit release-state docs
   before tagging. Do not move a published tag without an explicit re-release
   request.
-- CI/CD extensibility work is on `main` and awaiting the next CI and
-  test-build runs: shared composite actions, a five-target
-  `.github/targets.json`, CycloneDX SBOM plus build attestations, a protected
-  `release` environment, and package-name derivation from `Cargo.toml`.
-  `v0.2.0` remains a three-archive release; the next release is the first to
-  use the five-target matrix.
+- CI/CD extensibility work landed at `dd02b91`: CI run `42382695042`, the
+  five-target test build `42382793393` (Linux x86_64/arm64, macOS
+  arm64/x86_64, Windows x86_64) and the security run `42382868727` are green.
+  It adds shared composite actions, `.github/targets.json`, CycloneDX SBOM
+  plus build attestations, a protected `release` environment, and package-name
+  derivation from `Cargo.toml`. `v0.2.0` remains a three-archive release; the
+  next release is the first to use the five-target matrix.
 
 ## Previous state (2026-08-31)
 
@@ -146,13 +147,13 @@ something the next session needs to know.
 - Consider tag-protection rulesets (restrict `v*` creation) if the repo gains
   collaborators.
 - `test-build.yml` now plans five targets from `.github/targets.json`:
-  Linux x86_64/arm64, macOS arm64/x86_64 and Windows x86_64. Re-dispatch it
-  after the next push; the Linux arm64 leg uses `ubuntu-24.04-arm`, and the
-  Intel macOS leg cross-builds on `macos-26`. Its `ref` input needs a **full**
+  Linux x86_64/arm64, macOS arm64/x86_64 and Windows x86_64. All five passed
+  at `dd02b91`; the Linux arm64 leg uses `ubuntu-24.04-arm`, and the Intel
+  macOS leg cross-builds on `macos-26`. Its `ref` input needs a **full**
   commit SHA, branch, or tag.
-- The `publish` job now targets the `release` GitHub environment. Add required
-  reviewers there before the next release if publication should wait for
-  approval; without protection it publishes immediately.
+- The `publish` job targets the `release` GitHub environment. That environment
+  exists with `NIyueeE` as required reviewer and self-review allowed; adjust
+  the reviewer list in repository settings if needed.
 - The image remains `linux/amd64`; the target matrix adds Linux arm64 and
   Intel macOS archives, not multi-arch image publishing.
 - Branch protection on `main` must keep requiring the `full check chain`

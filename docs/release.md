@@ -105,10 +105,10 @@ published as a Release. Releases stay tag-driven.
 - The SBOM job generates `sbom.cdx.json` with CycloneDX and uploads it to the
   draft. The attestation job downloads every release asset and creates GitHub
   build provenance for the archives, checksums and SBOM.
-- The `publish` job runs in the release environment, named `release`.
-  Configure required reviewers on that environment if a public release should
-  wait for approval; without protection it publishes as soon as the build jobs
-  finish.
+- The `publish` job runs in the release environment, named `release`. That
+  environment requires a reviewer before a public release; adjust the reviewer
+  list in repository settings. The draft and all assets exist before the job
+  starts.
 - To retry a failed build, re-run the workflow from the Actions tab.
   `create-release` reuses the existing draft and the upload action replaces
   existing assets; a re-run does not modify a release that is already public.
